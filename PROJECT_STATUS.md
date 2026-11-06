@@ -29,10 +29,19 @@ _Last updated: 6 November 2026 (Philippine time)_
 | Live site at nurse-mira.vercel.app; signed-out visitors go to the sign-in page | ✅ |
 | Test 1: administrator login on the live site (eriah.businessdgte@gmail.com has the admin role) | ✅ |
 
-## Next (Phase 3)
+## Phase 3 progress
 
-Design system and sidebar, admin Students page (invite links, edit, deactivate/reactivate, reset links),
-Curriculum page, 5-step student onboarding, student dashboard, global search.
+Built and published (awaiting Erika's live test with a test student):
+- Blue sidebar layout (E-Skool style) with "Soon" labels for later features; top search bar; mobile menu.
+- Admin Overview (counts, quick actions, recent activity), Students list (search, filters), Invite student
+  (one-time setup link + ready-to-send message), student page (details, subjects, setup/reset link,
+  turn off/on, permanent delete with email confirmation).
+- Curriculum page (view only; shows how many students take each subject).
+- Setup-link page → create password → 5-step onboarding → student dashboard, My Subjects, Profile (also for admin), Search.
+- Database tests: student onboarding saves; students can't edit others or read the admin log; admin can edit
+  students and subjects but can't change roles through the app; deleting a student removes their subjects.
+
+Still to do in Phase 3: curriculum editing (subjects and topics).
 
 ## Known problems
 

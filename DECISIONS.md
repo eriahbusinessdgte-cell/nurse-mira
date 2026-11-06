@@ -20,3 +20,6 @@ Newest at the bottom. Each decision says what was decided and why, so it never h
 | D-015 | 2026-11-06 | Admin actions that need the Supabase secret key (inviting students, reset links) will run as Supabase Edge Functions, where the key is provided automatically. | The secret key never has to be copied anywhere by hand. |
 | D-016 | 2026-11-06 | Public sign-up is blocked inside the database: only the bootstrap admin email (eriah.businessdgte@gmail.com) or accounts created by Nurse Mira's invite tool can be created. | Works even if someone calls the sign-up API directly. |
 | D-012 | 2026-11-06 | Fonts bundled with the app (`geist` package) instead of loading from Google Fonts. | Works offline and avoids an outside request on every build. |
+| D-017 | 2026-11-06 | Setup and reset links are one-time links that expire after 1 hour (Supabase default). The admin can make a new one at any time from the student's page. | Keeps links safe if a message is forwarded. |
+| D-018 | 2026-11-06 | Admin can permanently delete a student (typing their email to confirm). Turning the account off remains the recommended option for real students. | Erika asked for a way to remove test accounts. |
+| D-019 | 2026-11-06 | Unbuilt features appear in the menu with a "Soon" label instead of linking to empty pages. | Shows what is coming without broken-looking pages. |

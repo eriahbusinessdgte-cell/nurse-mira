@@ -63,3 +63,10 @@ export async function requireProfile(role?: Profile["role"]) {
   }
   return { supabase, profile };
 }
+
+/** For student pages: also sends students who haven't finished onboarding to /welcome. */
+export async function requireStudent() {
+  const result = await requireProfile("student");
+  if (!result.profile.onboarding_completed) redirect("/welcome");
+  return result;
+}

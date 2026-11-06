@@ -7,6 +7,7 @@ export const metadata = { title: "Sign in · Nurse Mira" };
 const NOTICES: Record<string, string> = {
   inactive: "This account is turned off. Please contact your Nurse Mira administrator.",
   signedout: "You've been signed out.",
+  linkexpired: "That link has expired or was already used. Ask your administrator for a new one.",
 };
 
 async function LoginContent({ searchParams }: PageProps<"/login">) {
