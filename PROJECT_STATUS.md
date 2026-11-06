@@ -2,7 +2,7 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 5 — AI Tutor (built and published; waiting for Erika's live test). Phases 2–4 complete ✅
+**Current phase:** Phase 5 — AI Tutor (core tested live ✅; backup AI and handwriting reading still to do). Phases 2–4 complete ✅
 
 ## Done
 
@@ -88,7 +88,12 @@ Built and published 6 Nov 2026:
 - Admin overview: AI Tutor use (counts only — conversations stay private).
 
 Tested: Groq reachable (11 models); library search finds the P1 reviewer; safety topic switches to Clinical;
-type-check, lint, 15 automatic tests, clean production build ✅. **Waiting:** Erika's live test as Test Student.
+type-check, lint, 17 automatic tests, clean production build ✅.
+Live test by Erika as Test Student (6 Nov): answers with library source (P1 reviewer), eclampsia in Tea Mode switched to Clinical
+with safety note and "not in library yet" line, fair-share counter (70/day for 1 student), cheerful device voice + voice picker,
+microphone, dashboard Continue Studying, admin AI usage card ✅.
+Changes after testing: related library pages shown when the AI forgets to cite; safety note on every safety answer;
+fair-share daily limit (D-033); natural-voice read-aloud (D-034).
 
 Still to do in Phase 5: Cloudflare backup AI (needs Erika's free account), handwriting reading + Re-read button.
 
