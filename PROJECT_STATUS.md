@@ -2,7 +2,7 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 3 — Foundation (Phase 2 complete ✅)
+**Current phase:** Phase 4 — Shared library & storage (Phases 2 and 3 complete ✅)
 
 ## Done
 
@@ -48,7 +48,13 @@ Curriculum editing built: edit subject title/description, retire/restore subject
 add future subjects, add/rename/retire topics. Database tests: admin can edit; duplicate topics blocked;
 students can read but not change topics.
 
-Next: Phase 3 checkpoint — Erika adds a topic live. Then Phase 4 (shared library).
+Phase 3 checkpoint passed (6 Nov 2026): Erika added topics "Preeclampsia" and "eclampsia" to NCM 109 live.
+
+## Next (Phase 4)
+
+Upload (shared reviewer vs private document), text extraction, suggested subject/topic/title, indexing,
+duplicate detection, archive/restore/delete, storage dashboard, backup download. Erika to provide 2–3
+reviewers she is allowed to share.
 
 ## Known problems
 
