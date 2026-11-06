@@ -193,3 +193,34 @@ export async function rereadDocument(
   }
   return { unreadable: extracted.unreadablePages, notice: extracted.notice };
 }
+
+/** "Make smaller" button: replaces a stored photo-heavy file with a smaller copy made in this browser. */
+export async function shrinkStoredDocument(
+  doc: { id: string; file_path: string | null; mime_type: string; original_filename: string; page_count: number | null },
+  onStep: (s: Step) => void,
+): Promise<{ before: number; after: number }> {
+  if (!doc.file_path) throw new Error("The original file isn't stored any more.");
+  const supabase = createClient();
+  onStep({ label: "Getting the file" });
+  const { data: blob, error } = await supabase.storage.from("documents").download(doc.file_path);
+  if (error || !blob) throw new Error("The file couldn't be downloaded. Please try again.");
+  const file = new File([blob], doc.original_filename, { type: doc.mime_type });
+
+  const { maybeShrink } = await import("./shrink");
+  // Treat every page as a photo page: the button only appears for photo-heavy files.
+  const smaller = await maybeShrink(file, doc.mime_type, doc.page_count, doc.page_count ?? 1, (m) => onStep({ label: m }));
+  if (!smaller) throw new Error("This file can't be made noticeably smaller, so it was left as it is.");
+
+  onStep({ label: "Saving the smaller copy" });
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(smaller);
+  });
+  const { data, error: fnError } = await supabase.functions.invoke<{ before: number; after: number; error?: string }>("library-files", {
+    body: { action: "replace_file", ids: [doc.id], file: base64, kind: smaller.type, name: doc.original_filename },
+  });
+  if (fnError || !data || data.error) throw new Error(data?.error ?? (await functionError(fnError)));
+  return { before: data.before, after: data.after };
+}

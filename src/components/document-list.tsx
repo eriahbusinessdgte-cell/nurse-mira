@@ -2,13 +2,14 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Download, Globe2, Lock, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Download, Globe2, Lock, Minimize2, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
 import { Badge, buttonClass, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { deleteDocuments, setAllowDownload, setArchived, updateDocument, type Result } from "@/lib/library/actions";
 import { formatBytes, PROCESSING_LABEL, sourceLabel, SOURCE_TYPES } from "@/lib/library/labels";
 import type { SubjectLite, TopicLite } from "@/lib/library/suggest";
-import { rereadDocument, retryIndexing, type Step } from "@/lib/library/upload";
+import { rereadDocument, retryIndexing, shrinkStoredDocument, type Step } from "@/lib/library/upload";
+import { looksPhotoHeavy } from "@/lib/library/shrink-rules";
 
 export type DocRow = {
   id: string;
@@ -256,6 +257,23 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
     }
   }
 
+  async function shrink(doc: DocRow) {
+    setRetrying((r) => ({ ...r, [doc.id]: { label: "Starting" } }));
+    try {
+      const { before, after } = await shrinkStoredDocument(doc, (s) => setRetrying((r) => ({ ...r, [doc.id]: s })));
+      setRetrying((r) => {
+        const next = { ...r };
+        delete next[doc.id];
+        return next;
+      });
+      setMessage({ ok: true, message: `“${doc.title}” is now smaller: ${formatBytes(before)} → ${formatBytes(after)}. The text in the library didn't change.` });
+      router.refresh();
+    } catch (e) {
+      setRetrying((r) => ({ ...r, [doc.id]: "error" }));
+      setMessage({ ok: false, message: (e as Error).message });
+    }
+  }
+
   async function retry(doc: DocRow) {
     setRetrying((r) => ({ ...r, [doc.id]: { label: "Starting" } }));
     try {
@@ -373,6 +391,11 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                       <ScanText size={15} aria-hidden /> Read again
                     </button>
                   )}
+                {(own || isAdmin) && d.file_path && d.processing === "ready" && looksPhotoHeavy(d.file_size, d.page_count, d.mime_type) && (!r || r === "error") && (
+                  <button type="button" onClick={() => shrink(d)} className={buttonClass("accent", "!px-3 !py-1.5")} title="Save storage by making a smaller copy">
+                    <Minimize2 size={15} aria-hidden /> Make smaller
+                  </button>
+                )}
                 {canDownload && (
                   <button type="button" onClick={() => download(d)} className="rounded-lg p-2 text-mira-muted hover:bg-mira-page hover:text-mira-ink" aria-label={`Download ${d.title}`} title="Download original">
                     <Download size={17} />

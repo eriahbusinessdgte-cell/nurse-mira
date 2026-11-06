@@ -9,6 +9,13 @@ export function shouldShrinkPdf(sizeBytes: number, pageCount: number | null, pho
   return photoPages / pageCount >= SHRINK_MIN_PHOTO_SHARE;
 }
 
+/** For files already in the library: big files averaging over 150 KB a page are photo-heavy. */
+export function looksPhotoHeavy(sizeBytes: number, pageCount: number | null, mimeType: string) {
+  if (mimeType.startsWith("image/")) return shouldShrinkImage(sizeBytes);
+  if (mimeType !== "application/pdf" || !pageCount || sizeBytes < SHRINK_MIN_BYTES) return false;
+  return sizeBytes / pageCount >= 150 * 1024;
+}
+
 export function shouldShrinkImage(sizeBytes: number) {
   return sizeBytes > 2 * 1024 * 1024;
 }

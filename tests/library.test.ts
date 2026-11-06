@@ -84,3 +84,11 @@ test("render scale caps the longest side and never exceeds 2x", () => {
   assert.equal(renderScale(595, 842), 2); // A4: 2x is enough
   assert.equal(renderScale(300, 400), 2);
 });
+
+import { looksPhotoHeavy } from "../src/lib/library/shrink-rules.ts";
+test("Make smaller shows only for big photo-heavy files", () => {
+  assert.equal(looksPhotoHeavy(15_000_000, 50, "application/pdf"), true); // 300 KB a page
+  assert.equal(looksPhotoHeavy(6_000_000, 200, "application/pdf"), false); // 30 KB a page: typed text
+  assert.equal(looksPhotoHeavy(1_700_000, 8, "application/pdf"), false); // already small
+  assert.equal(looksPhotoHeavy(3_000_000, 1, "image/jpeg"), true);
+});
