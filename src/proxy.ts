@@ -5,7 +5,7 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 // Runs before every page: keeps the login session fresh and sends signed-out
 // visitors to the login page. Pages also check the role themselves, so this is
 // not the only lock.
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login", "/auth", "/api/keepalive"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

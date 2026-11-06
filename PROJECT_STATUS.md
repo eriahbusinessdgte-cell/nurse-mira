@@ -2,9 +2,11 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 6 — Study tools (Review Center ✅, Quizzes & Exams ✅ tested; Case Study Builder ✅ tested; NCP Builder ✅ tested; My Planner built, waiting for Erika's test). Phases 2–5 complete ✅
+**Current phase:** Phase 7 — Admin & reliability (Backups and keep-alive built, waiting for Erika's first backup). Phases 2–6 complete ✅
 
 ## Done
+
+- Phase 7 (in progress): Backups page (password-locked download, check, put back missing records), Overview backup reminder, daily keep-alive so the free database never pauses, Recovery Guide (RECOVERY_GUIDE.md).
 
 - Phase 1 plan approved (Nurse Mira – Phase 1 Plan doc).
 - Design direction chosen: E-Skool-style layout, blue and white with a warm yellow accent, greeting "Good morning, Nurse (name)".

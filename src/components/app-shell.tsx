@@ -11,6 +11,7 @@ import {
   FileHeart,
   GraduationCap,
   HardDrive,
+  DatabaseBackup,
   LayoutDashboard,
   Library,
   ListChecks,
@@ -41,6 +42,7 @@ const ICONS: Record<string, LucideIcon> = {
   Users,
   BookMarked,
   HardDrive,
+  DatabaseBackup,
   Settings,
 };
 

@@ -1,8 +1,9 @@
 import { Suspense } from "react";
-import { BookMarked, MessageCircleHeart, UserPlus, Users } from "lucide-react";
+import { BookMarked, DatabaseBackup, MessageCircleHeart, UserPlus, Users } from "lucide-react";
 import { Greeting } from "@/components/greeting";
 import { PageLoading } from "@/components/page-loading";
 import { ButtonLink, Card, EmptyState } from "@/components/ui";
+import { daysSince } from "@/lib/backup/format";
 import { manilaDay } from "@/lib/dates";
 import { requireProfile } from "@/lib/supabase/server";
 
@@ -16,6 +17,11 @@ const ACTION_TEXT: Record<string, string> = {
   "student.deactivated": "turned off the account of",
   "student.reactivated": "turned back on the account of",
   "student.deleted": "permanently deleted",
+};
+
+const BACKUP_TEXT: Record<string, string> = {
+  "backup.downloaded": "downloaded a backup",
+  "backup.restored": "put back missing records from a backup",
 };
 
 const CURRICULUM_TEXT: Record<string, string> = {
@@ -38,7 +44,7 @@ async function Overview() {
 
   const today = manilaDay();
   const utcToday = new Date().toISOString().slice(0, 10);
-  const [active, inactive, notSetUp, subjects, activity, usage, limitRow, cf] = await Promise.all([
+  const [active, inactive, notSetUp, subjects, activity, usage, limitRow, cf, settings] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", true),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", false),
     supabase
@@ -56,7 +62,12 @@ async function Overview() {
     supabase.from("ai_usage").select("student_id, answers, day").gte("day", manilaDay(6)),
     supabase.rpc("student_daily_limit"),
     supabase.from("cloudflare_usage").select("neurons, pages, answers").eq("day", utcToday).maybeSingle(),
+    supabase.from("app_settings").select("key, value").in("key", ["last_backup_at", "daily_answer_pool"]),
   ]);
+  const setting = (k: string) => settings.data?.find((r) => r.key === k)?.value;
+  const pool = Number(setting("daily_answer_pool") ?? 90);
+  const lastBackup = typeof setting("last_backup_at") === "string" ? (setting("last_backup_at") as string) : null;
+  const backupAge = daysSince(lastBackup);
   const cfUsed = Math.round(Number(cf.data?.neurons ?? 0));
   const usageRows = (usage.data ?? []) as { student_id: string; answers: number; day: string }[];
   const answersToday = usageRows.filter((r) => r.day === today).reduce((n, r) => n + r.answers, 0);
@@ -104,6 +115,23 @@ async function Overview() {
         ))}
       </div>
 
+      {(backupAge === null || backupAge > 7) && (
+        <Card className="flex flex-wrap items-center gap-4 bg-amber-50 ring-amber-200">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+            <DatabaseBackup size={22} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Time for a backup</h2>
+            <p className="text-sm text-amber-900">
+              {lastBackup ? `The last backup was ${backupAge} days ago.` : "No backup has been made yet."} It takes about a minute.
+            </p>
+          </div>
+          <ButtonLink href="/admin/backup" kind="secondary">
+            Make a backup
+          </ButtonLink>
+        </Card>
+      )}
+
       <Card className="flex flex-wrap items-center gap-4">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-mira-yellow text-mira-blue-dark">
           <MessageCircleHeart size={22} aria-hidden />
@@ -112,7 +140,7 @@ async function Overview() {
           <h2 className="font-semibold">AI Tutor use</h2>
           <p className="text-sm text-mira-muted">
             {answersToday} answer{answersToday === 1 ? "" : "s"} today from {studentsToday} student{studentsToday === 1 ? "" : "s"} · {answersWeek} in the last 7 days · each student can ask{" "}
-            {dailyLimit} a day right now (70 shared equally among {active.count ?? 0} active student{active.count === 1 ? "" : "s"}). Only counts are shown — students&apos; conversations stay private.
+            {dailyLimit} a day right now ({pool} shared equally among {active.count ?? 0} active student{active.count === 1 ? "" : "s"}). Only counts are shown — students&apos; conversations stay private.
           </p>
           <p className="mt-1 text-sm text-mira-muted">
             Backup AI and handwriting reader (Cloudflare): {cfUsed.toLocaleString()} of 10,000 free units used today
@@ -129,7 +157,9 @@ async function Overview() {
           <ul className="divide-y divide-mira-line text-sm">
             {items.map((a) => (
               <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2.5">
-                {a.action.startsWith("curriculum.") ? (
+                {a.action.startsWith("backup.") ? (
+                  <span>You {BACKUP_TEXT[a.action] ?? a.action}</span>
+                ) : a.action.startsWith("curriculum.") ? (
                   <span>
                     You {CURRICULUM_TEXT[a.action] ?? a.action}{" "}
                     <span className="font-medium">{a.details?.name || a.details?.code || a.details?.title || ""}</span>
