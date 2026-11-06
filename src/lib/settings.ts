@@ -43,7 +43,7 @@ export function readSettings(rows: { key: string; value: unknown }[] | null | un
   };
 }
 
-export type Checked = { ok: true; settings: AppSettings } | { ok: false; message: string };
+export type Checked = { ok: true; settings: AppSettings } | { ok: false; message: string; field: keyof AppSettings };
 
 export function checkSettings(input: Record<string, unknown>): Checked {
   const whole = (v: unknown) => {
@@ -56,13 +56,13 @@ export function checkSettings(input: Record<string, unknown>): Checked {
   const mode = input.default_tutor_mode;
 
   if (!(pool >= LIMITS.pool.min && pool <= LIMITS.pool.max))
-    return { ok: false, message: `The daily answer pool must be a whole number from ${LIMITS.pool.min} to ${LIMITS.pool.max}.` };
+    return { ok: false, field: "daily_answer_pool", message: `The daily pool must be a whole number from ${LIMITS.pool.min} to ${LIMITS.pool.max}.` };
   if (!(minimum >= LIMITS.minimum.min && minimum <= LIMITS.minimum.max))
-    return { ok: false, message: `The minimum per student must be a whole number from ${LIMITS.minimum.min} to ${LIMITS.minimum.max}.` };
-  if (minimum > pool) return { ok: false, message: "The minimum per student can't be bigger than the whole pool." };
+    return { ok: false, field: "daily_answer_minimum", message: `The minimum per student must be a whole number from ${LIMITS.minimum.min} to ${LIMITS.minimum.max}.` };
+  if (minimum > pool) return { ok: false, field: "daily_answer_minimum", message: "The minimum per student can't be bigger than the whole pool." };
   if (!(pages >= LIMITS.pages.min && pages <= LIMITS.pages.max))
-    return { ok: false, message: `The page-reading allowance must be a whole number from ${LIMITS.pages.min} to ${LIMITS.pages.max.toLocaleString()}.` };
-  if (mode !== "tea" && mode !== "clinical") return { ok: false, message: "Please choose a starting tutor mode." };
+    return { ok: false, field: "page_reading_budget", message: `The page-reading allowance must be a whole number from ${LIMITS.pages.min} to ${LIMITS.pages.max.toLocaleString()}.` };
+  if (mode !== "tea" && mode !== "clinical") return { ok: false, field: "default_tutor_mode", message: "Please choose a starting tutor mode." };
 
   return { ok: true, settings: { daily_answer_pool: pool, daily_answer_minimum: minimum, page_reading_budget: pages, default_tutor_mode: mode } };
 }
