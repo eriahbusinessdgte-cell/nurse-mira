@@ -1,8 +1,9 @@
 import { Suspense } from "react";
-import { BookMarked, UserPlus, Users } from "lucide-react";
+import { BookMarked, MessageCircleHeart, UserPlus, Users } from "lucide-react";
 import { Greeting } from "@/components/greeting";
 import { PageLoading } from "@/components/page-loading";
 import { ButtonLink, Card, EmptyState } from "@/components/ui";
+import { manilaDay } from "@/lib/dates";
 import { requireProfile } from "@/lib/supabase/server";
 
 export const metadata = { title: "Admin · Nurse Mira" };
@@ -35,7 +36,8 @@ function when(iso: string) {
 async function Overview() {
   const { supabase, profile } = await requireProfile("admin");
 
-  const [active, inactive, notSetUp, subjects, activity] = await Promise.all([
+  const today = manilaDay();
+  const [active, inactive, notSetUp, subjects, activity, usage, limitRow] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", true),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", false),
     supabase
@@ -50,7 +52,14 @@ async function Overview() {
       .select("id, action, details, created_at, target:profiles!activity_log_target_id_fkey(full_name, email)")
       .order("created_at", { ascending: false })
       .limit(8),
+    supabase.from("ai_usage").select("student_id, answers, day").gte("day", manilaDay(6)),
+    supabase.from("app_settings").select("value").eq("key", "daily_answer_limit").maybeSingle(),
   ]);
+  const usageRows = (usage.data ?? []) as { student_id: string; answers: number; day: string }[];
+  const answersToday = usageRows.filter((r) => r.day === today).reduce((n, r) => n + r.answers, 0);
+  const answersWeek = usageRows.reduce((n, r) => n + r.answers, 0);
+  const studentsToday = new Set(usageRows.filter((r) => r.day === today).map((r) => r.student_id)).size;
+  const dailyLimit = Number(limitRow.data?.value ?? 10);
 
   const stats = [
     { label: "Active students", value: active.count ?? 0 },
@@ -91,6 +100,19 @@ async function Overview() {
           </Card>
         ))}
       </div>
+
+      <Card className="flex flex-wrap items-center gap-4">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-mira-yellow text-mira-blue-dark">
+          <MessageCircleHeart size={22} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">AI Tutor use</h2>
+          <p className="text-sm text-mira-muted">
+            {answersToday} answer{answersToday === 1 ? "" : "s"} today from {studentsToday} student{studentsToday === 1 ? "" : "s"} · {answersWeek} in the last 7 days · limit{" "}
+            {dailyLimit} per student per day. Only counts are shown — students&apos; conversations stay private.
+          </p>
+        </div>
+      </Card>
 
       <Card>
         <h2 className="mb-4 font-semibold">Recent activity</h2>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, CalendarDays, MessageCircleHeart, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Coffee, MessageCircleHeart, Sparkles, Stethoscope } from "lucide-react";
 import { Greeting } from "@/components/greeting";
 import { MiniCalendar } from "@/components/mini-calendar";
 import { PageLoading } from "@/components/page-loading";
@@ -24,6 +24,14 @@ async function Dashboard() {
     .filter(Boolean)
     .sort((a, b) => a.sort_order - b.sort_order);
 
+  const { data: convData } = await supabase
+    .from("conversations")
+    .select("id, title, mode, summary, next_step, last_message_at")
+    .order("last_message_at", { ascending: false })
+    .limit(4);
+  const sessions = (convData ?? []) as { id: string; title: string; mode: "tea" | "clinical"; summary: string | null; next_step: string | null; last_message_at: string }[];
+  const latest = sessions[0];
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
       <div className="min-w-0 space-y-6">
@@ -37,11 +45,20 @@ async function Dashboard() {
               {profile.year_level && profile.current_semester
                 ? `${YEAR_LABEL[profile.year_level]} · ${SEM_LABEL[profile.current_semester]} · ${subjects.length} subject${subjects.length === 1 ? "" : "s"}. `
                 : ""}
-              Your study sessions will appear here once the AI Tutor opens. For now, make sure your subjects are right.
+              {latest ? "Ready to pick up where you left off?" : "Ask Nurse Mira anything about your subjects to start your first study session."}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <ButtonLink href="/subjects" kind="accent">
-                <BookOpen size={18} aria-hidden /> Review my subjects
+              {latest ? (
+                <ButtonLink href={`/tutor?c=${latest.id}&ask=${encodeURIComponent("Where did we leave off?")}`} kind="accent">
+                  <ArrowRight size={18} aria-hidden /> Continue Studying
+                </ButtonLink>
+              ) : (
+                <ButtonLink href="/tutor" kind="accent">
+                  <MessageCircleHeart size={18} aria-hidden /> Start studying with Nurse Mira
+                </ButtonLink>
+              )}
+              <ButtonLink href="/subjects" kind="secondary">
+                <BookOpen size={18} aria-hidden /> My subjects
               </ButtonLink>
             </div>
           </div>
@@ -78,13 +95,39 @@ async function Dashboard() {
           )}
         </section>
 
+        {/* Recent study sessions */}
+        {sessions.length > 0 && (
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Recent Study Sessions</h2>
+              <Link href="/tutor" className="text-sm text-mira-blue hover:underline">
+                New session
+              </Link>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {sessions.map((c) => (
+                <Link key={c.id} href={`/tutor?c=${c.id}`} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-mira-line hover:ring-mira-blue">
+                  <p className="flex items-center gap-1.5 text-xs text-mira-muted">
+                    {c.mode === "tea" ? <Coffee size={13} aria-hidden /> : <Stethoscope size={13} aria-hidden />}
+                    {c.mode === "tea" ? "Tea Mode" : "Clinical"} ·{" "}
+                    {new Date(c.last_message_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", timeZone: "Asia/Manila" })}
+                  </p>
+                  <p className="mt-1 line-clamp-1 font-semibold">{c.title}</p>
+                  {c.summary && <p className="mt-1 line-clamp-2 text-sm text-mira-muted">{c.summary}</p>}
+                  {c.next_step && <p className="mt-2 line-clamp-1 text-xs font-medium text-mira-blue">Next: {c.next_step}</p>}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Coming next */}
         <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl bg-mira-yellow p-5 text-mira-blue-dark">
+          <Link href="/tutor" className="rounded-2xl bg-mira-yellow p-5 text-mira-blue-dark">
             <MessageCircleHeart size={28} aria-hidden />
             <p className="mt-3 text-lg font-semibold">AI Tutor</p>
-            <p className="text-sm opacity-80">Tea Mode and Clinical Mode explanations of your subjects — coming soon.</p>
-          </div>
+            <p className="text-sm opacity-80">Tea Mode and Clinical Mode explanations, with sources from the shared library.</p>
+          </Link>
           <div className="rounded-2xl bg-mira-blue p-5 text-white">
             <Sparkles size={28} aria-hidden />
             <p className="mt-3 text-lg font-semibold">Review Center</p>
