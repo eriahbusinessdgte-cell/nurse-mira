@@ -381,9 +381,9 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
                 )}
               </div>
               {/nursing care plan/i.test(s.title) && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-mira-muted">
-                  <ClipboardList size={14} aria-hidden /> Full care plans will be made in the NCP Builder (coming next) and linked to this case study.
-                </p>
+                <Link href={`/care-plans?case=${initial.id}`} className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-mira-blue hover:underline">
+                  <ClipboardList size={15} aria-hidden /> Open the NCP Builder for this case — make and link the full care plans
+                </Link>
               )}
             </Card>
           ))}

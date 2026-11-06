@@ -2,7 +2,7 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 6 — Study tools (Review Center ✅, Quizzes & Exams ✅ tested; Case Study Builder built, waiting for Erika's test). Phases 2–5 complete ✅
+**Current phase:** Phase 6 — Study tools (Review Center ✅, Quizzes & Exams ✅ tested; Case Study Builder ✅ tested; NCP Builder built, waiting for Erika's test). Phases 2–5 complete ✅
 
 ## Done
 
@@ -103,8 +103,9 @@ Cloudflare added 6 Nov: backup AI for the tutor + handwriting reader with "Read 
   six tabs (Overview, Terms, Nursing focus, Practice questions, Flashcards, Quick review), print, "Ask the AI Tutor" link.
   Tested live by Erika ✅ (subject names now shown instead of codes).
 - Quizzes & Exams (D-040) tested live by Erika ✅; essays dropped (D-041).
-- Case Study Builder built (D-042). Waiting: Erika's live test.
-- Next: NCP Builder → My Planner.
+- Case Study Builder (D-042) tested by Erika ✅.
+- NCP Builder built (D-043). Waiting: Erika's live test.
+- Next: My Planner.
 
 ## Known problems
 
