@@ -143,6 +143,19 @@ Deno.serve(async (req) => {
         if (!p) return fail(origin, 404, "Student not found.");
         if (p.role === "admin") return fail(origin, 400, "Administrator accounts can't be deleted here.");
         if (confirmEmail !== p.email.toLowerCase()) return fail(origin, 400, "The email you typed doesn't match this student.");
+        // Their private documents (and files) are deleted too. Shared reviewers they
+        // uploaded stay in the library for everyone, without their name.
+        const { data: privateDocs } = await admin
+          .from("documents")
+          .select("id, file_path")
+          .eq("uploader_id", id)
+          .eq("visibility", "private");
+        const privatePaths = (privateDocs ?? []).map((d) => d.file_path).filter(Boolean) as string[];
+        if (privatePaths.length) {
+          const { error: sErr } = await admin.storage.from("documents").remove(privatePaths);
+          if (sErr) return fail(origin, 500, "Couldn't remove the student's private files. Nothing was deleted. Please try again.");
+        }
+        if (privateDocs?.length) await admin.from("documents").delete().in("id", privateDocs.map((d) => d.id));
         // Deleting the login removes the profile and everything linked to it (database cascade).
         const { error } = await admin.auth.admin.deleteUser(id);
         if (error) return fail(origin, 400, `Could not delete the account: ${error.message}`);

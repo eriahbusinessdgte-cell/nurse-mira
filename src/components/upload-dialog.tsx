@@ -1,0 +1,401 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, FileUp, Globe2, Lock, Sparkles, Upload, X } from "lucide-react";
+import { buttonClass, inputClass } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
+import { ACCEPT_ATTR, ACCEPTED, ExtractError, extractText, fileKind, sha256, type Extracted } from "@/lib/library/extract";
+import { formatBytes, SOURCE_TYPES } from "@/lib/library/labels";
+import { suggestMetadata, type SubjectLite, type TopicLite } from "@/lib/library/suggest";
+import { uploadDocument, type Step } from "@/lib/library/upload";
+import { totalChars } from "@/lib/library/chunk";
+import { SEM_LABEL, YEAR_LABEL } from "@/lib/nav";
+
+type Props = { subjects: SubjectLite[]; topics: TopicLite[]; label?: string };
+
+type Prepared = { file: File; kind: string; sha: string; extracted: Extracted; chars: number };
+
+export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [reading, setReading] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<Prepared | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+
+  const [visibility, setVisibility] = useState<"shared" | "private" | null>(null);
+  const [rights, setRights] = useState(false);
+  const [title, setTitle] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [topicId, setTopicId] = useState("");
+  const [sourceType, setSourceType] = useState("student_notes");
+  const [suggested, setSuggested] = useState<{ subject: boolean; topic: boolean }>({ subject: false, topic: false });
+
+  const [step, setStep] = useState<Step | null>(null);
+  const [finished, setFinished] = useState(false);
+
+  const subjectTopics = useMemo(() => topics.filter((t) => t.subject_id === subjectId), [topics, subjectId]);
+  const subject = subjects.find((s) => s.id === subjectId);
+
+  const reset = () => {
+    setReading(null);
+    setPrepared(null);
+    setError(null);
+    setWarning(null);
+    setVisibility(null);
+    setRights(false);
+    setTitle("");
+    setSubjectId("");
+    setTopicId("");
+    setSourceType("student_notes");
+    setSuggested({ subject: false, topic: false });
+    setStep(null);
+    setFinished(false);
+  };
+
+  const close = () => {
+    if (step && !finished && !error) return; // don't close mid-upload
+    const changed = finished;
+    setOpen(false);
+    reset();
+    if (changed) router.refresh();
+  };
+
+  async function choose(file: File) {
+    reset();
+    const kind = fileKind(file);
+    if (!kind) {
+      setError("This type of file isn't supported. Please upload a PDF, Word (.docx), PowerPoint (.pptx), text file, or a JPG/PNG photo.");
+      return;
+    }
+    try {
+      setReading("Checking the file…");
+      const sha = await sha256(file);
+      const extracted = await extractText(file, setReading);
+      const chars = totalChars(extracted.pages);
+      if (chars < 100) {
+        throw new ExtractError(
+          "Nurse Mira couldn't find readable text in this file, so it can't be added. If it's a photo or scan, make sure the text is clear and well lit, then try again.",
+        );
+      }
+      const s = suggestMetadata(file.name, extracted.pages.map((p) => p.text).join("\n"), subjects, topics);
+      setTitle(s.title);
+      setSubjectId(s.subject_id ?? "");
+      setTopicId(s.topic_id ?? "");
+      setSuggested({ subject: !!s.subject_id, topic: !!s.topic_id });
+      if (extracted.method === "ocr") setWarning("This file was read from pictures, so some words may be misread. Please check the title and subject.");
+
+      // Duplicates
+      const supabase = createClient();
+      const [{ data: shared }, { data: mine }] = await Promise.all([
+        supabase.rpc("find_shared_duplicate", { p_sha256: sha }),
+        supabase.from("documents").select("title").eq("sha256", sha).limit(1),
+      ]);
+      const dup = (shared as { title: string; status: string }[] | null)?.[0];
+      if (dup) {
+        setError(
+          `This exact file is already in the shared library as “${dup.title}”${dup.status === "archived" ? " (archived)" : ""}, so there's no need to upload it again. Everyone can already learn from it.`,
+        );
+        setReading(null);
+        return;
+      }
+      if (mine && mine.length) setWarning(`You've uploaded this exact file before (“${mine[0].title}”). You can still upload it again if you meant to.`);
+
+      setPrepared({ file, kind, sha, extracted, chars });
+      setReading(null);
+    } catch (e) {
+      setReading(null);
+      setError(e instanceof ExtractError ? e.message : "Something went wrong while reading the file. Please try again.");
+    }
+  }
+
+  const ready = prepared && visibility && title.trim() && subjectId && (visibility === "private" || rights);
+
+  async function startUpload() {
+    if (!prepared || !visibility || !subject) return;
+    setError(null);
+    try {
+      await uploadDocument(
+        {
+          file: prepared.file,
+          kind: prepared.kind,
+          sha256: prepared.sha,
+          extracted: prepared.extracted,
+          visibility,
+          title,
+          subject_id: subject.id,
+          topic_id: topicId || null,
+          year_level: subject.year_level,
+          semester: subject.semester,
+          source_type: sourceType,
+          rights_confirmed: visibility === "shared" ? rights : false,
+        },
+        setStep,
+      );
+      setFinished(true);
+    } catch (e) {
+      setError((e as Error).message || "The upload didn't finish. Please try again.");
+      setFinished(true); // the record exists (marked as needing attention) — refresh the list on close
+    }
+  }
+
+  const choice = (value: "shared" | "private", icon: React.ReactNode, heading: string, text: string) => (
+    <button
+      type="button"
+      onClick={() => setVisibility(value)}
+      aria-pressed={visibility === value}
+      className={`flex flex-1 gap-3 rounded-xl border p-4 text-left transition ${
+        visibility === value ? "border-mira-blue bg-mira-blue-soft" : "border-mira-line hover:border-mira-blue/40"
+      }`}
+    >
+      <span className="mt-0.5 text-mira-blue">{icon}</span>
+      <span>
+        <span className="block font-medium">{heading}</span>
+        <span className="block text-sm text-mira-muted">{text}</span>
+      </span>
+    </button>
+  );
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={buttonClass("accent")}>
+        <Upload size={18} aria-hidden /> {label}
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="upload-title">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <h2 id="upload-title" className="text-lg font-semibold">
+                Upload a document
+              </h2>
+              <button type="button" onClick={close} aria-label="Close" className="rounded-lg p-1 text-mira-muted hover:bg-mira-page">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Progress / finished view */}
+            {step ? (
+              <div className="space-y-4 py-2">
+                {finished && !error ? (
+                  <div className="text-center">
+                    <CheckCircle2 size={44} className="mx-auto text-mira-success" aria-hidden />
+                    <p className="mt-3 text-lg font-semibold">Uploaded and ready!</p>
+                    <p className="mt-1 text-sm text-mira-muted">
+                      {visibility === "shared"
+                        ? "Nurse Mira can now use this reviewer to help every student."
+                        : "This document is private to you. Only you can see it."}
+                    </p>
+                  </div>
+                ) : (
+                  <div role="status" aria-live="polite">
+                    <p className="font-medium">{step.label}…</p>
+                    {step.total ? (
+                      <>
+                        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-mira-line">
+                          <div className="h-full rounded-full bg-mira-blue transition-all" style={{ width: `${Math.round(((step.done ?? 0) / step.total) * 100)}%` }} />
+                        </div>
+                        <p className="mt-1 text-sm text-mira-muted">
+                          {step.done} of {step.total} parts
+                        </p>
+                      </>
+                    ) : (
+                      <div className="mt-3 h-2.5 animate-pulse rounded-full bg-mira-blue/30" />
+                    )}
+                    {!error && <p className="mt-3 text-xs text-mira-muted">Please keep this window open until it finishes.</p>}
+                  </div>
+                )}
+                {error && (
+                  <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-mira-danger">
+                    {error}
+                  </p>
+                )}
+                {(finished || error) && (
+                  <button type="button" onClick={close} className={buttonClass(error ? "secondary" : "primary", "w-full")}>
+                    {error ? "Close — I'll retry from the list" : "Done"}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {/* Step 1: file */}
+                <div
+                  onDragOver={(e) => (e.preventDefault(), setDragging(true))}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) choose(f);
+                  }}
+                  className={`rounded-xl border-2 border-dashed p-6 text-center transition ${dragging ? "border-mira-blue bg-mira-blue-soft" : "border-mira-line"}`}
+                >
+                  <FileUp size={28} className="mx-auto text-mira-blue" aria-hidden />
+                  {prepared ? (
+                    <p className="mt-2 text-sm">
+                      <span className="font-medium">{prepared.file.name}</span>
+                      <span className="text-mira-muted">
+                        {" "}
+                        · {formatBytes(prepared.file.size)} · {ACCEPTED[prepared.kind]}
+                        {prepared.extracted.pageCount ? ` · ${prepared.extracted.pageCount} pages` : ""}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm text-mira-muted">Drag a file here, or choose one from your device.</p>
+                  )}
+                  <button type="button" onClick={() => inputRef.current?.click()} disabled={!!reading} className={buttonClass("secondary", "mt-3")}>
+                    {prepared ? "Choose a different file" : "Choose file"}
+                  </button>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept={ACCEPT_ATTR}
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) choose(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <p className="mt-2 text-xs text-mira-muted">PDF, Word, PowerPoint, text, or JPG/PNG photo · up to 25 MB</p>
+                </div>
+
+                {reading && (
+                  <p role="status" className="flex items-center gap-2 text-sm text-mira-muted">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-mira-blue/25 border-t-mira-blue" /> {reading}
+                  </p>
+                )}
+                {error && (
+                  <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-mira-danger">
+                    {error}
+                  </p>
+                )}
+                {warning && !error && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{warning}</p>}
+
+                {prepared && (
+                  <>
+                    {/* Step 2: shared or private */}
+                    <div>
+                      <p className="mb-2 text-sm font-medium">What kind of document is this?</p>
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        {choice("shared", <Globe2 size={20} />, "Shared reviewer", "Learning material that helps every Nurse Mira student.")}
+                        {choice("private", <Lock size={20} />, "Private document", "Your own notes, assignments or case material. Only you can see it.")}
+                      </div>
+                    </div>
+
+                    {visibility === "shared" && (
+                      <div className="rounded-xl bg-mira-blue-soft p-4 text-sm text-mira-blue-dark">
+                        <p className="font-medium">Before you share</p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          <li>Its contents will be used by Nurse Mira to answer questions from <strong>all students</strong>.</li>
+                          <li>Other students can&apos;t download the original file unless the administrator allows it.</li>
+                          <li>Never share patient information, personal assignments or case studies.</li>
+                          <li>Don&apos;t share paid review-center materials or textbooks without permission.</li>
+                        </ul>
+                        <label className="mt-3 flex items-start gap-2 font-medium">
+                          <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 h-4 w-4 accent-mira-blue" />
+                          I&apos;m allowed to share this, and it contains no patient information.
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Step 3–4: details */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-sm font-medium sm:col-span-2">
+                        Title
+                        <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+                      </label>
+                      <label className="block text-sm font-medium">
+                        Subject
+                        {suggested.subject && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-mira-blue">
+                            <Sparkles size={12} aria-hidden /> suggested
+                          </span>
+                        )}
+                        <select
+                          value={subjectId}
+                          onChange={(e) => {
+                            setSubjectId(e.target.value);
+                            setTopicId("");
+                            setSuggested({ subject: false, topic: false });
+                          }}
+                          className={inputClass}
+                        >
+                          <option value="">Choose a subject…</option>
+                          {[1, 2, 3, 4].map((y) =>
+                            [1, 2].map((s) => (
+                              <optgroup key={`${y}-${s}`} label={`${YEAR_LABEL[y]} · ${SEM_LABEL[s]}`}>
+                                {subjects
+                                  .filter((x) => x.year_level === y && x.semester === s)
+                                  .map((x) => (
+                                    <option key={x.id} value={x.id}>
+                                      {x.code} — {x.title.length > 60 ? `${x.title.slice(0, 60)}…` : x.title}
+                                    </option>
+                                  ))}
+                              </optgroup>
+                            )),
+                          )}
+                        </select>
+                      </label>
+                      <label className="block text-sm font-medium">
+                        Topic <span className="font-normal text-mira-muted">(if known)</span>
+                        {suggested.topic && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-mira-blue">
+                            <Sparkles size={12} aria-hidden /> suggested
+                          </span>
+                        )}
+                        <select value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={!subjectId} className={inputClass}>
+                          <option value="">{subjectTopics.length ? "No specific topic" : "No topics for this subject yet"}</option>
+                          {subjectTopics.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block text-sm font-medium sm:col-span-2">
+                        Where is it from?
+                        <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className={inputClass}>
+                          {SOURCE_TYPES.map((s) => (
+                            <option key={s.value} value={s.value}>
+                              {s.label}
+                              {s.hint ? ` — ${s.hint}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {subject && (
+                        <p className="text-xs text-mira-muted sm:col-span-2">
+                          Will be filed under {YEAR_LABEL[subject.year_level]} · {SEM_LABEL[subject.semester]}. Found about{" "}
+                          {Math.round(prepared.chars / 6).toLocaleString()} words.
+                        </p>
+                      )}
+                    </div>
+
+                    <button type="button" disabled={!ready} onClick={startUpload} className={buttonClass("primary", "w-full")}>
+                      <Upload size={18} aria-hidden /> Upload
+                    </button>
+                    {!ready && (
+                      <p className="text-center text-xs text-mira-muted">
+                        {!visibility
+                          ? "Choose Shared reviewer or Private document."
+                          : !subjectId
+                            ? "Choose a subject."
+                            : visibility === "shared" && !rights
+                              ? "Tick the box to confirm you're allowed to share it."
+                              : "Add a title."}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

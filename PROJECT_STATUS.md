@@ -50,11 +50,24 @@ students can read but not change topics.
 
 Phase 3 checkpoint passed (6 Nov 2026): Erika added topics "Preeclampsia" and "eclampsia" to NCM 109 live.
 
-## Next (Phase 4)
+## Phase 4 progress (built, awaiting Erika's live test)
 
-Upload (shared reviewer vs private document), text extraction, suggested subject/topic/title, indexing,
-duplicate detection, archive/restore/delete, storage dashboard, backup download. Erika to provide 2–3
-reviewers she is allowed to share.
+- Upload: shared reviewer vs private document, sharing notice + permission tick box, file read in the browser
+  (PDF incl. scanned pages, Word, PowerPoint, text, photos via OCR), suggested title/subject/topic,
+  duplicate check, upload → save text → index with progress, clear errors and Retry.
+- Search index: Supabase Edge Function `embed` (free gte-small model, small batches for the 2-second CPU limit)
+  plus keyword index.
+- My Library (students): My uploads and Shared library tabs, search/filter, download when allowed,
+  edit/delete own uploads.
+- Shared Library (admin): filters (subject, year, semester, uploader, status, type, processing), bulk
+  archive/restore/delete, download on/off, edit, duplicates panel.
+- Storage (admin): file and database meters with 70/80/90% warnings, by semester, by subject, largest files,
+  archive a semester, "keep text only" for archived files, export the shared library as .zip.
+- Permanent deletion (Edge Function `library-files`) removes original file, text, index and record; shows
+  what will be deleted and the space recovered first. Deleting a student removes their private documents.
+- Database tests (17): Student B finds Student A's shared reviewer text; private text hidden from other students
+  and from the admin; students can't allow downloads, archive or edit the index; duplicates detected without
+  revealing private files; archived text stays searchable; deleting removes the index.
 
 ## Known problems
 

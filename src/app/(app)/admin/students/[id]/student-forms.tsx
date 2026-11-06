@@ -179,8 +179,9 @@ export function AccessPanel({ student }: { student: Student }) {
       <Card className="ring-red-100">
         <h2 className="mb-1 font-semibold text-mira-danger">Delete permanently</h2>
         <p className="mb-4 text-sm text-mira-muted">
-          For test accounts or mistakes. This permanently removes the student&apos;s login, profile, chosen subjects and any of their
-          saved work. It can&apos;t be undone. To keep their work, turn the account off instead.
+          For test accounts or mistakes. This permanently removes the student&apos;s login, profile, chosen subjects, private documents
+          and saved work. Shared reviewers they uploaded stay in the library for everyone. It can&apos;t be undone. To keep their
+          work, turn the account off instead.
         </p>
         {!showDelete ? (
           <button type="button" onClick={() => setShowDelete(true)} className={buttonClass("danger", "w-full")}>

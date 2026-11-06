@@ -23,3 +23,9 @@ Newest at the bottom. Each decision says what was decided and why, so it never h
 | D-017 | 2026-11-06 | Setup and reset links are one-time links that expire after 1 hour (Supabase default). The admin can make a new one at any time from the student's page. | Keeps links safe if a message is forwarded. |
 | D-018 | 2026-11-06 | Admin can permanently delete a student (typing their email to confirm). Turning the account off remains the recommended option for real students. | Erika asked for a way to remove test accounts. |
 | D-019 | 2026-11-06 | Unbuilt features appear in the menu with a "Soon" label instead of linking to empty pages. | Shows what is coming without broken-looking pages. |
+| D-020 | 2026-11-06 | Files are read in the student's browser (pdf.js, mammoth, JSZip, tesseract.js); the server stores text pieces and builds the search index in small batches. | Free, no outside service, works within Supabase's 2-second CPU limit; indexing can resume after interruptions. |
+| D-021 | 2026-11-06 | The admin sees the title and size of students' private documents (for storage management) but cannot open the file or read its text. | Balances storage management with student privacy (D-005). |
+| D-022 | 2026-11-06 | An exact duplicate of a shared reviewer is blocked at upload; the admin also sees a duplicates list. | Saves the 1 GB free storage. |
+| D-023 | 2026-11-06 | "Keep text only": archived shared documents can drop their original file but keep their text for the AI. | Frees storage without losing knowledge. |
+| D-024 | 2026-11-06 | When a student is deleted, their private documents are deleted too; shared reviewers they uploaded stay. | Shared knowledge benefits everyone; private material leaves with the student. |
+| D-025 | 2026-11-06 | Supabase's leaked-password check is a paid feature and stays off; passwords must be at least 8 characters. | Free-first rule. |

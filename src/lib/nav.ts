@@ -11,7 +11,7 @@ export const STUDENT_NAV: NavItem[] = [
   { href: "/care-plans", label: "Nursing Care Plans", icon: "ClipboardList", soon: true },
   { href: "/quizzes", label: "Quizzes & Exams", icon: "ListChecks", soon: true },
   { href: "/planner", label: "My Planner", icon: "CalendarDays", soon: true },
-  { href: "/library", label: "My Library", icon: "Library", soon: true },
+  { href: "/library", label: "My Library", icon: "Library" },
   { href: "/profile", label: "Profile", icon: "UserRound" },
 ];
 
@@ -19,8 +19,8 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Overview", icon: "LayoutDashboard" },
   { href: "/admin/students", label: "Students", icon: "Users" },
   { href: "/admin/curriculum", label: "Curriculum", icon: "BookMarked" },
-  { href: "/admin/library", label: "Shared Library", icon: "Library", soon: true },
-  { href: "/admin/storage", label: "Storage", icon: "HardDrive", soon: true },
+  { href: "/admin/library", label: "Shared Library", icon: "Library" },
+  { href: "/admin/storage", label: "Storage", icon: "HardDrive" },
   { href: "/admin/settings", label: "Settings", icon: "Settings", soon: true },
   { href: "/profile", label: "My Profile", icon: "UserRound" },
 ];
