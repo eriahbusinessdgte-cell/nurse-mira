@@ -6,7 +6,9 @@ import { MiniCalendar } from "@/components/mini-calendar";
 import { PageLoading } from "@/components/page-loading";
 import { ButtonLink, Card, EmptyState } from "@/components/ui";
 import type { Subject } from "@/lib/curriculum";
+import { manilaDay } from "@/lib/dates";
 import { SEM_LABEL, YEAR_LABEL } from "@/lib/nav";
+import { addDays, formatTime, KIND_COLOR, KIND_LABEL, type Kind } from "@/lib/planner/plan";
 import { requireStudent } from "@/lib/supabase/server";
 
 export const metadata = { title: "Dashboard · Nurse Mira" };
@@ -23,6 +25,23 @@ async function Dashboard() {
     .map((r) => r.subjects)
     .filter(Boolean)
     .sort((a, b) => a.sort_order - b.sort_order);
+
+  const today = manilaDay();
+  const [{ data: dueData }, { data: examData }, { data: quizData }] = await Promise.all([
+    supabase
+      .from("planner_items")
+      .select("id, title, kind, due_date, due_time, priority")
+      .neq("status", "done")
+      .lte("due_date", today)
+      .order("due_date")
+      .order("due_time", { nullsFirst: false })
+      .limit(6),
+    supabase.from("planner_items").select("id, title, due_date, due_time").eq("kind", "exam").neq("status", "done").gt("due_date", today).lte("due_date", addDays(today, 21)).order("due_date").limit(3),
+    supabase.from("quiz_attempts").select("id, quiz_id, score, total, finished_at, quizzes(title)").not("finished_at", "is", null).order("finished_at", { ascending: false }).limit(3),
+  ]);
+  const dueItems = (dueData ?? []) as { id: string; title: string; kind: Kind; due_date: string; due_time: string | null; priority: string }[];
+  const exams = (examData ?? []) as { id: string; title: string; due_date: string; due_time: string | null }[];
+  const quizResults = (quizData ?? []) as unknown as { id: string; quiz_id: string; score: number; total: number; quizzes: { title: string } | null }[];
 
   const { data: convData } = await supabase
     .from("conversations")
@@ -145,8 +164,61 @@ async function Dashboard() {
           <h2 className="mb-3 flex items-center gap-2 font-semibold">
             <CalendarDays size={18} className="text-mira-blue" aria-hidden /> Your Tasks Today
           </h2>
-          <EmptyState title="Nothing due today">Assignments, exams and clinical requirements will show here when My Planner opens.</EmptyState>
+          {dueItems.length === 0 ? (
+            <EmptyState title="Nothing due today" action={<ButtonLink href="/planner" kind="secondary">Open My Planner</ButtonLink>}>
+              Add assignments, exams and clinical requirements to My Planner and they&apos;ll show here.
+            </EmptyState>
+          ) : (
+            <ul className="space-y-2">
+              {dueItems.map((i) => (
+                <li key={i.id}>
+                  <Link href="/planner" className="block rounded-lg p-2 hover:bg-mira-page">
+                    <p className="text-sm font-medium">{i.title}</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-mira-muted">
+                      <span className={`rounded px-1.5 py-0.5 ${KIND_COLOR[i.kind]}`}>{KIND_LABEL[i.kind]}</span>
+                      {i.due_date < today ? <span className="font-medium text-mira-danger">Overdue</span> : <span>Today{i.due_time ? `, ${formatTime(i.due_time)}` : ""}</span>}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/planner" className="text-sm text-mira-blue hover:underline">
+                  Open My Planner →
+                </Link>
+              </li>
+            </ul>
+          )}
         </Card>
+        {exams.length > 0 && (
+          <Card>
+            <h2 className="mb-3 font-semibold">Upcoming exams</h2>
+            <ul className="space-y-1.5 text-sm">
+              {exams.map((e) => (
+                <li key={e.id} className="flex justify-between gap-2">
+                  <span className="truncate">{e.title}</span>
+                  <span className="shrink-0 text-mira-muted">
+                    {new Date(`${e.due_date}T00:00:00Z`).toLocaleDateString("en-PH", { month: "short", day: "numeric", timeZone: "UTC" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+        {quizResults.length > 0 && (
+          <Card>
+            <h2 className="mb-3 font-semibold">Recent quiz results</h2>
+            <ul className="space-y-1.5 text-sm">
+              {quizResults.map((q) => (
+                <li key={q.id}>
+                  <Link href={`/quizzes/${q.quiz_id}`} className="flex justify-between gap-2 hover:text-mira-blue">
+                    <span className="truncate">{q.quizzes?.title ?? "Quiz"}</span>
+                    <span className="shrink-0 font-medium">{q.total ? Math.round((q.score / q.total) * 100) : 0}%</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </aside>
     </div>
   );

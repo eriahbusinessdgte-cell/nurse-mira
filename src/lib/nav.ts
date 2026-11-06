@@ -10,7 +10,7 @@ export const STUDENT_NAV: NavItem[] = [
   { href: "/case-studies", label: "Case Studies", icon: "FileHeart" },
   { href: "/care-plans", label: "Nursing Care Plans", icon: "ClipboardList" },
   { href: "/quizzes", label: "Quizzes & Exams", icon: "ListChecks" },
-  { href: "/planner", label: "My Planner", icon: "CalendarDays", soon: true },
+  { href: "/planner", label: "My Planner", icon: "CalendarDays" },
   { href: "/library", label: "My Library", icon: "Library" },
   { href: "/profile", label: "Profile", icon: "UserRound" },
 ];
