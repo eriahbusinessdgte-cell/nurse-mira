@@ -32,7 +32,7 @@ export type ConversationItem = {
   summary: string | null;
   next_step: string | null;
 };
-type SourceRef = { n: number; document_id: string; title: string; page: number | null; source_type: string; status: string };
+type SourceRef = { n: number; document_id: string; title: string; page: number | null; source_type: string; status: string; related?: boolean };
 export type ChatMessage = {
   id: number | string;
   role: "user" | "assistant";
@@ -86,7 +86,7 @@ function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking
       {message.safety_mode && (
         <p className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <ShieldAlert size={14} aria-hidden /> Safety topic — answered in Clinical Mode. For learning only; always follow your clinical instructor and the
-          physician&apos;s orders.
+          physician&apos;s orders, and check doses against a current drug reference.
         </p>
       )}
       <div className="prose-mira text-sm leading-relaxed">
@@ -110,11 +110,13 @@ function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking
       </div>
       {message.sources.length > 0 && (
         <div className="mt-3 border-t border-mira-line pt-3">
-          <p className="mb-1.5 text-xs font-semibold text-mira-muted">Sources from the Nurse Mira library</p>
+          <p className="mb-1.5 text-xs font-semibold text-mira-muted">
+            {message.sources.every((s) => s.related) ? "Related pages in the Nurse Mira library" : "Sources from the Nurse Mira library"}
+          </p>
           <ul className="space-y-1">
             {message.sources.map((s) => (
               <li key={s.n} id={`source-${s.n}`} className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded bg-mira-blue-soft px-1.5 py-0.5 font-semibold text-mira-blue">S{s.n}</span>
+                {!s.related && <span className="rounded bg-mira-blue-soft px-1.5 py-0.5 font-semibold text-mira-blue">S{s.n}</span>}
                 <span className="font-medium">{s.title}</span>
                 {s.page ? <span className="text-mira-muted">page {s.page}</span> : null}
                 <span className="text-mira-muted">· {sourceLabel(s.source_type)}</span>

@@ -198,6 +198,17 @@ Deno.serve(async (req) => {
   const usedSources = (sources as (Source & { document_id: string })[])
     .filter((s) => cited.has(s.n))
     .map((s) => ({ n: s.n, document_id: s.document_id, title: s.title, page: s.page, source_type: s.source_type, status: s.status }));
+  // If library pages matched but the AI didn't cite them, still show the best ones — labelled "related", not as citations.
+  const relatedSources =
+    usedSources.length === 0
+      ? (sources as (Source & { document_id: string })[])
+          .slice(0, 2)
+          .map((s) => ({ n: s.n, document_id: s.document_id, title: s.title, page: s.page, source_type: s.source_type, status: s.status, related: true }))
+      : [];
+  // Nothing in the library matched: make sure the student is told, even if the AI forgot to say so.
+  if (sources.length === 0 && !/library/i.test(answer.slice(0, 300))) {
+    answer = `_This topic isn't in the Nurse Mira library yet, so this answer is from general nursing knowledge._\n\n${answer}`;
+  }
 
   // 7. Save.
   if (!conversation) {
@@ -214,7 +225,7 @@ Deno.serve(async (req) => {
   await db.from("messages").insert({ conversation_id: conv.id, role: "user", content: question, mode });
   const { data: saved } = await db
     .from("messages")
-    .insert({ conversation_id: conv.id, role: "assistant", content: answer, sources: usedSources, mode, provider: "groq", model, safety_mode: safety && mode === "tea" })
+    .insert({ conversation_id: conv.id, role: "assistant", content: answer, sources: [...usedSources, ...relatedSources], mode, provider: "groq", model, safety_mode: safety })
     .select("id, role, content, sources, mode, safety_mode, created_at")
     .single();
   const newCount = conv.message_count + 2;
