@@ -332,7 +332,7 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
                 <input
                   value={s.title}
                   onChange={(e) => update(s.id, { title: e.target.value.slice(0, 120) })}
-                  className="min-w-0 flex-1 rounded-lg border border-transparent px-1 py-0.5 font-semibold outline-none hover:border-mira-line focus:border-mira-blue"
+                  className="min-w-[12rem] flex-1 rounded-lg border border-transparent px-1 py-0.5 font-semibold outline-none hover:border-mira-line focus:border-mira-blue"
                   aria-label={`Section ${i + 1} title`}
                 />
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="rounded p-1.5 text-mira-muted hover:bg-mira-page disabled:opacity-30" aria-label="Move up">
