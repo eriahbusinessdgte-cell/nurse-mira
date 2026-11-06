@@ -302,7 +302,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   const suggestions = [
     "Where did we leave off?",
     "Explain heart failure and edema in simple terms",
-    subjectId ? `Quiz me with 3 questions on ${subjects.find((s) => s.id === subjectId)?.code}` : "Give me 3 practice questions on my current subjects",
+    subjectId ? `Quiz me with 3 questions on ${subjects.find((s) => s.id === subjectId)?.title}` : "Give me 3 practice questions on my current subjects",
     "Do a short mock oral recitation with me",
   ];
 
@@ -400,11 +400,11 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
           <label className="flex items-center gap-1.5 text-sm text-mira-muted">
             <BookOpen size={15} aria-hidden />
             <span className="sr-only">Subject</span>
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="max-w-[11rem] rounded-lg border border-mira-line bg-white px-2 py-1.5 text-sm text-mira-ink">
+            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="max-w-[15rem] rounded-lg border border-mira-line bg-white px-2 py-1.5 text-sm text-mira-ink">
               <option value="">Any subject</option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.code}
+                  {s.title} ({s.code})
                 </option>
               ))}
             </select>

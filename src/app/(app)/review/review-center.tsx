@@ -104,7 +104,7 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
     return (
       <SheetView
         sheet={sheet}
-        subjectLabel={subject ? `${subject.code} – ${subject.title}` : ""}
+        subjectLabel={subject ? `${subject.title} (${subject.code})` : ""}
         onBack={() => {
           setSheet(null);
           window.history.replaceState(null, "", "/review");
@@ -173,7 +173,7 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
               <option value="">Choose a subject…</option>
               {visibleSubjects.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.code} – {s.title}
+                  {s.title} ({s.code})
                   {mySubjectIds.includes(s.id) ? " ★" : ""}
                 </option>
               ))}
@@ -250,7 +250,8 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
               return (
                 <a key={s.id} href={`/review?sheet=${s.id}`} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-mira-line hover:ring-mira-blue">
                   <p className="text-xs text-mira-muted">
-                    {subject?.code ?? "Subject"}
+                    <span className="font-medium text-mira-ink">{subject?.title ?? "Subject"}</span>
+                    {subject ? ` (${subject.code})` : ""}
                     {mySubjectIds.includes(s.subject_id) ? " · your subject" : ""}
                   </p>
                   <p className="mt-0.5 font-semibold">{s.focus}</p>

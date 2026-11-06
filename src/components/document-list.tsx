@@ -374,7 +374,7 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{d.title}</p>
                 <p className="text-sm text-mira-muted">
-                  {subject ? `${subject.code}` : "No subject"}
+                  {subject ? `${subject.title} (${subject.code})` : "No subject"}
                   {topic ? ` · ${topic.name}` : ""} · {sourceLabel(d.source_type)} · {formatBytes(d.file_size)}
                   {d.page_count ? ` · ${d.page_count} pages` : ""} · {when(d.created_at)}
                   {isAdmin && ` · by ${d.uploader_name ?? "former student"}`}
