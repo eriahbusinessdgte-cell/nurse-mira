@@ -31,7 +31,7 @@ _Last updated: 6 November 2026 (Philippine time)_
 
 ## Phase 3 progress
 
-Built and published (awaiting Erika's live test with a test student):
+Built, published and tested live by Erika on 6 Nov 2026 (test student "Test Student" kept for Phase 4):
 - Blue sidebar layout (E-Skool style) with "Soon" labels for later features; top search bar; mobile menu.
 - Admin Overview (counts, quick actions, recent activity), Students list (search, filters), Invite student
   (one-time setup link + ready-to-send message), student page (details, subjects, setup/reset link,
@@ -41,7 +41,10 @@ Built and published (awaiting Erika's live test with a test student):
 - Database tests: student onboarding saves; students can't edit others or read the admin log; admin can edit
   students and subjects but can't change roles through the app; deleting a student removes their subjects.
 
-Still to do in Phase 3: curriculum editing (subjects and topics).
+Live tests passed (Erika): invite → setup link → password → onboarding → dashboard; irregular subject
+selection (Second Year student added NCM 112) saved and visible to admin (tests 2, 3, 5, 6).
+
+Still to do in Phase 3: curriculum editing (subjects and topics), then the Phase 3 checkpoint.
 
 ## Known problems
 
