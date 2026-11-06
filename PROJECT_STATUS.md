@@ -2,7 +2,7 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 4 — Shared library & storage (Phases 2 and 3 complete ✅)
+**Current phase:** Phase 5 — AI Tutor (built and published; waiting for Erika's live test). Phases 2–4 complete ✅
 
 ## Done
 
@@ -74,6 +74,23 @@ shrinking of photo-heavy files (D-028) and page-by-page photo detection (D-029).
 - Database tests (17): Student B finds Student A's shared reviewer text; private text hidden from other students
   and from the admin; students can't allow downloads, archive or edit the index; duplicates detected without
   revealing private files; archived text stays searchable; deleting removes the index.
+
+## Phase 5 progress (AI Tutor)
+
+Built and published 6 Nov 2026:
+- Groq free AI connected (key stored only in Supabase secrets; Zero Data Retention on at Groq).
+- `tutor` server function: checks the daily limit (10 answers per student, admin unlimited), searches the shared library,
+  answers with numbered sources [S1], forces Clinical Mode for safety topics (doses, emergencies, eclampsia, etc.),
+  backup model if the main one fails, saves the conversation and a short "where we left off" summary.
+- AI Tutor screen: Tea/Clinical switch, subject focus, answers left today, saved conversations (open, delete),
+  quick-start chips, source list under each answer, safety note, microphone (Chrome/Edge) and "Listen" button.
+- Dashboard: Continue Studying button and Recent Study Sessions.
+- Admin overview: AI Tutor use (counts only — conversations stay private).
+
+Tested: Groq reachable (11 models); library search finds the P1 reviewer; safety topic switches to Clinical;
+type-check, lint, 15 automatic tests, clean production build ✅. **Waiting:** Erika's live test as Test Student.
+
+Still to do in Phase 5: Cloudflare backup AI (needs Erika's free account), handwriting reading + Re-read button.
 
 ## Known problems
 
