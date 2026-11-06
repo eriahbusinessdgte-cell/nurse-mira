@@ -391,7 +391,7 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                       <ScanText size={15} aria-hidden /> Read again
                     </button>
                   )}
-                {(own || isAdmin) && d.file_path && d.processing === "ready" && looksPhotoHeavy(d.file_size, d.page_count, d.mime_type) && (!r || r === "error") && (
+                {(own || isAdmin) && d.file_path && !/-small\.(pdf|jpg)$/.test(d.file_path) && d.processing === "ready" && looksPhotoHeavy(d.file_size, d.page_count, d.mime_type) && (!r || r === "error") && (
                   <button type="button" onClick={() => shrink(d)} className={buttonClass("accent", "!px-3 !py-1.5")} title="Save storage by making a smaller copy">
                     <Minimize2 size={15} aria-hidden /> Make smaller
                   </button>
