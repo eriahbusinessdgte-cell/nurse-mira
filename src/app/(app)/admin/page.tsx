@@ -17,6 +17,17 @@ const ACTION_TEXT: Record<string, string> = {
   "student.deleted": "permanently deleted",
 };
 
+const CURRICULUM_TEXT: Record<string, string> = {
+  "curriculum.subject_added": "added the subject",
+  "curriculum.subject_updated": "updated the subject",
+  "curriculum.subject_retired": "retired a subject",
+  "curriculum.subject_restored": "restored a subject",
+  "curriculum.topic_added": "added the topic",
+  "curriculum.topic_renamed": "renamed a topic to",
+  "curriculum.topic_retired": "retired a topic",
+  "curriculum.topic_restored": "restored a topic",
+};
+
 function when(iso: string) {
   return new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
@@ -48,7 +59,7 @@ async function Overview() {
     { label: "Subjects", value: subjects.count ?? 0 },
   ];
 
-  type Activity = { id: number; action: string; details: { email?: string }; created_at: string; target: { full_name: string; email: string } | null };
+  type Activity = { id: number; action: string; details: { email?: string; name?: string; title?: string; code?: string }; created_at: string; target: { full_name: string; email: string } | null };
   const items = (activity.data ?? []) as unknown as Activity[];
 
   return (
@@ -89,10 +100,17 @@ async function Overview() {
           <ul className="divide-y divide-mira-line text-sm">
             {items.map((a) => (
               <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2.5">
-                <span>
-                  You {ACTION_TEXT[a.action] ?? a.action}{" "}
-                  <span className="font-medium">{a.target?.full_name || a.target?.email || a.details?.email || "a student"}</span>
-                </span>
+                {a.action.startsWith("curriculum.") ? (
+                  <span>
+                    You {CURRICULUM_TEXT[a.action] ?? a.action}{" "}
+                    <span className="font-medium">{a.details?.name || a.details?.code || a.details?.title || ""}</span>
+                  </span>
+                ) : (
+                  <span>
+                    You {ACTION_TEXT[a.action] ?? a.action}{" "}
+                    <span className="font-medium">{a.target?.full_name || a.target?.email || a.details?.email || "a student"}</span>
+                  </span>
+                )}
                 <span className="text-mira-muted">{when(a.created_at)}</span>
               </li>
             ))}

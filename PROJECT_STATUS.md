@@ -44,7 +44,11 @@ Built, published and tested live by Erika on 6 Nov 2026 (test student "Test Stud
 Live tests passed (Erika): invite → setup link → password → onboarding → dashboard; irregular subject
 selection (Second Year student added NCM 112) saved and visible to admin (tests 2, 3, 5, 6).
 
-Still to do in Phase 3: curriculum editing (subjects and topics), then the Phase 3 checkpoint.
+Curriculum editing built: edit subject title/description, retire/restore subjects (kept in old records),
+add future subjects, add/rename/retire topics. Database tests: admin can edit; duplicate topics blocked;
+students can read but not change topics.
+
+Next: Phase 3 checkpoint — Erika adds a topic live. Then Phase 4 (shared library).
 
 ## Known problems
 
