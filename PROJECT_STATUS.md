@@ -95,7 +95,7 @@ microphone, dashboard Continue Studying, admin AI usage card ✅.
 Changes after testing: related library pages shown when the AI forgets to cite; safety note on every safety answer;
 fair-share daily limit (D-033); natural-voice read-aloud (D-034).
 
-Cloudflare added 6 Nov: backup AI for the tutor + handwriting reader with "Read again" button (D-035, D-036). Waiting: Erika presses Read again on Pharmacology-01 Notes.
+Cloudflare added 6 Nov: backup AI for the tutor + handwriting reader with "Read again" button (D-035, D-036). Tested: Erika pressed Read again on Pharmacology-01 Notes — 46 unread pages read (≈90 units/page, 4,300 units total), 70 text pieces, 0 unread pages; search now finds e.g. page 20 for "reverse transcriptase inhibitors" (score 0.998). Tutor also accepts a 0.80+ match when the page contains a distinctive word from the question (drug names).
 
 ## Known problems
 

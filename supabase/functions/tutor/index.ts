@@ -66,6 +66,12 @@ async function groq(model: string, messages: ChatMessage[], opts: { maxTokens: n
   return text.trim();
 }
 
+const COMMON = new Set(["about", "explain", "please", "what", "which", "where", "there", "their", "these", "those", "would", "could", "should", "nursing", "patient", "patients", "simple", "terms", "between", "difference", "describe", "discuss", "signs", "symptoms", "causes", "management", "interventions", "definition", "example", "examples"]);
+/** Distinctive words in a question (6+ letters, not everyday words). */
+export function keyTerms(question: string): string[] {
+  return [...new Set(question.toLowerCase().match(/[a-z][a-z-]{5,}/g) ?? [])].filter((w) => !COMMON.has(w));
+}
+
 // deno-lint-ignore no-explicit-any
 async function cloudflare(db: any, messages: ChatMessage[], maxTokens: number) {
   if (!CF_ACCOUNT || !CF_TOKEN) throw Object.assign(new Error("Cloudflare not set up"), { status: 503 });
@@ -179,7 +185,9 @@ Deno.serve(async (req) => {
       match_count: 6,
     });
     sources = ((hits ?? []) as { title: string; page_number: number | null; content: string; source_type: string; status: string; score: number; document_id: string }[])
-      .filter((h) => h.score >= 0.85) // gte-small scores unrelated text around 0.80; relevant passages score higher
+      // gte-small scores unrelated text around 0.80, so a strong score is needed — unless the page
+      // actually contains a distinctive word from the question (e.g. a drug name like "zidovudine").
+      .filter((h) => h.score >= 0.85 || (h.score >= 0.8 && keyTerms(question).some((t) => h.content.toLowerCase().includes(t))))
       .slice(0, 5)
       .map((h, i) => ({ n: i + 1, title: h.title, page: h.page_number, source_type: h.source_type, status: h.status, content: h.content, document_id: h.document_id }) as Source & { document_id: string });
   } catch (e) {
