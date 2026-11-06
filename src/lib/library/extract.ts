@@ -6,6 +6,7 @@
 // if that isn't available, the free in-browser reader is used instead.
 // Heavy libraries are loaded only when needed.
 import { createClient } from "@/lib/supabase/client";
+import { reportProblem } from "@/lib/report-problem";
 import type { Page } from "./chunk";
 
 export const ACCEPTED: Record<string, string> = {
@@ -112,8 +113,14 @@ export async function readWithVision(canvas: HTMLCanvasElement): Promise<VisionR
   try {
     const image = await canvasToBase64(canvas);
     const { data, error } = await createClient().functions.invoke("read-page", { body: { image } });
-    if (error || !data) return { ok: false, stop: false, message: "The page reader couldn't be reached." };
-    if (data.kind === "budget" || data.kind === "unavailable") return { ok: false, stop: true, message: String(data.error) };
+    if (error || !data) {
+      reportProblem("read-page", "unreachable", "The page reader couldn't be reached.");
+      return { ok: false, stop: false, message: "The page reader couldn't be reached." };
+    }
+    if (data.kind === "budget" || data.kind === "unavailable") {
+      reportProblem("read-page", data.kind, String(data.error));
+      return { ok: false, stop: true, message: String(data.error) };
+    }
     if (data.error) return { ok: false, stop: false, message: String(data.error) };
     return { ok: true, text: String(data.text ?? ""), readable: !!data.readable };
   } catch {

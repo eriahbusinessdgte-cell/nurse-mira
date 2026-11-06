@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { buttonClass, Card, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { problemKind, reportProblem } from "@/lib/report-problem";
 import { downloadBlob, markdownToDocx } from "@/lib/case/export-docx";
 import { FACT_FIELDS, findIdentifiers, headingsFromTemplate, missingCount, newSectionId, type Facts, type Section } from "@/lib/case/facts";
 
@@ -144,6 +145,7 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
           /* ignore */
         }
       }
+      reportProblem("case-draft", problemKind(data, !!error), text);
       setMessage({ ok: false, text: text ?? "The draft couldn't be made. Please try again." });
       return;
     }

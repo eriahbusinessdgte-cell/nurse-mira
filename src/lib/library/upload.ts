@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { problemKind, reportProblem } from "@/lib/report-problem";
 import { chunkPages, totalChars } from "./chunk";
 import type { Extracted } from "./extract";
 
@@ -44,7 +45,11 @@ export async function runIndexing(documentId: string, onStep: (s: Step) => void)
     });
     if (error || !data) {
       failures++;
-      if (failures >= 3) throw new Error(await functionError(error));
+      if (failures >= 3) {
+        const message = await functionError(error);
+        reportProblem("embed", problemKind(null, true), message);
+        throw new Error(message);
+      }
       await new Promise((r) => setTimeout(r, 1500 * failures));
       continue;
     }

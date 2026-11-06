@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BookOpenCheck, GraduationCap, Library, Loader2, Sparkles } from "lucide-react";
 import { buttonClass, Card, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { problemKind, reportProblem } from "@/lib/report-problem";
 import { SEM_LABEL, YEAR_LABEL } from "@/lib/nav";
 import { SheetView } from "./sheet-view";
 
@@ -87,6 +88,7 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
           /* ignore */
         }
       }
+      reportProblem("review", problemKind(data, !!fnError), message);
       setError(message ?? "The study sheet couldn't be opened. Please try again.");
       return;
     }

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { problemKind, reportProblem } from "@/lib/report-problem";
 import { sourceLabel } from "@/lib/library/labels";
 import { englishVoices, saveVoiceName, savedVoiceName, speakPieces, toSpeech } from "@/lib/tutor/voice";
 import { deleteConversation } from "./actions";
@@ -221,6 +222,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
         }
       }
       if (kind === "limit") setRemaining(0);
+      reportProblem("tutor", problemKind(data, !!error), text);
       setBanner({ kind, text, retry: kind === "limit" ? undefined : question });
       return;
     }

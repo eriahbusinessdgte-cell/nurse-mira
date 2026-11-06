@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { buttonClass, Card, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { problemKind, reportProblem } from "@/lib/report-problem";
 import { weakTopics } from "@/lib/quiz/grade";
 import { deleteQuiz } from "./actions";
 
@@ -140,6 +141,7 @@ export function QuizHome({
         }
       }
       setBusy(false);
+      reportProblem("quiz", problemKind(data, !!fnError), message);
       setError(message ?? "The quiz couldn't be made. Please try again.");
       return;
     }

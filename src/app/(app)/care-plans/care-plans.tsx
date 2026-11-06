@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronRight, ClipboardList, Copy, FileDown, Loader2, Plus, Printer, Sparkles, Trash2, X } from "lucide-react";
 import { buttonClass, Card, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { problemKind, reportProblem } from "@/lib/report-problem";
 import { findIdentifiers } from "@/lib/case/facts";
 import { downloadBlob, markdownToDocx } from "@/lib/case/export-docx";
 import { emptyPlan, fromLines, planTitle, planToMarkdown, toLines, type Intervention, type Plan } from "@/lib/ncp/plan";
@@ -146,6 +147,7 @@ export function CarePlans({ plans: initialPlans, cases, initialGroup, remaining:
           /* ignore */
         }
       }
+      reportProblem("ncp", problemKind(data, !!error), text);
       return setMessage({ ok: false, text: text ?? "The care plans couldn't be made. Please try again." });
     }
     if (typeof data.remaining === "number") setRemaining(data.remaining);
