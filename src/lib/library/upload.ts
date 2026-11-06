@@ -224,3 +224,40 @@ export async function shrinkStoredDocument(
   if (fnError || !data || data.error) throw new Error(data?.error ?? (await functionError(fnError)));
   return { before: data.before, after: data.after };
 }
+
+const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+/** Admin button: swaps a photographed file for a typed Word copy of the text already in the library. */
+export async function replaceWithTypedCopy(
+  doc: { id: string; title: string; original_filename: string; file_path: string | null },
+  onStep: (s: Step) => void,
+): Promise<{ before: number; after: number }> {
+  if (!doc.file_path) throw new Error("The original file isn't stored any more.");
+  const supabase = createClient();
+  onStep({ label: "Collecting the typed text" });
+  const { data: chunks, error } = await supabase
+    .from("document_chunks")
+    .select("chunk_index, page_number, content")
+    .eq("document_id", doc.id)
+    .order("chunk_index")
+    .limit(5000);
+  if (error || !chunks?.length) throw new Error("No typed text was found for this document, so nothing was changed.");
+
+  const { rebuildText } = await import("./typed-copy");
+  const { makeDocx } = await import("./make-docx");
+  onStep({ label: "Making the Word copy" });
+  const blob = await makeDocx(doc.title, rebuildText(chunks));
+
+  onStep({ label: "Saving the Word copy" });
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  const { data, error: fnError } = await supabase.functions.invoke<{ before: number; after: number; error?: string }>("library-files", {
+    body: { action: "replace_file", ids: [doc.id], file: base64, kind: DOCX, name: doc.original_filename },
+  });
+  if (fnError || !data || data.error) throw new Error(data?.error ?? (await functionError(fnError)));
+  return { before: data.before, after: data.after };
+}

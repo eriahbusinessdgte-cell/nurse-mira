@@ -2,13 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Download, Globe2, Lock, Minimize2, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Download, FileText, Globe2, Lock, Minimize2, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
 import { Badge, buttonClass, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { deleteDocuments, setAllowDownload, setArchived, updateDocument, type Result } from "@/lib/library/actions";
 import { formatBytes, PROCESSING_LABEL, sourceLabel, SOURCE_TYPES } from "@/lib/library/labels";
 import type { SubjectLite, TopicLite } from "@/lib/library/suggest";
-import { rereadDocument, retryIndexing, shrinkStoredDocument, type Step } from "@/lib/library/upload";
+import { replaceWithTypedCopy, rereadDocument, retryIndexing, shrinkStoredDocument, type Step } from "@/lib/library/upload";
 import { looksPhotoHeavy } from "@/lib/library/shrink-rules";
 
 export type DocRow = {
@@ -44,6 +44,13 @@ type Props = {
   currentUserId: string;
   emptyTitle: string;
   emptyText: React.ReactNode;
+};
+
+/** The original name, with the extension of the file actually stored (e.g. a typed Word copy). */
+const downloadName = (d: { original_filename: string; file_path: string | null }) => {
+  const ext = d.file_path?.match(/\.(\w+)$/)?.[1];
+  const base = d.original_filename.replace(/\.\w+$/, "");
+  return ext ? `${base}${d.file_path!.endsWith("-typed.docx") ? " (typed)" : ""}.${ext}` : d.original_filename;
 };
 
 const when = (iso: string) => new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
@@ -226,7 +233,7 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
 
   async function download(doc: DocRow) {
     if (!doc.file_path) return;
-    const { data, error } = await createClient().storage.from("documents").createSignedUrl(doc.file_path, 60, { download: doc.original_filename });
+    const { data, error } = await createClient().storage.from("documents").createSignedUrl(doc.file_path, 60, { download: downloadName(doc) });
     if (error || !data) {
       setMessage({ ok: false, message: "This file can't be downloaded." });
       return;
@@ -267,6 +274,31 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
         return next;
       });
       setMessage({ ok: true, message: `“${doc.title}” is now smaller: ${formatBytes(before)} → ${formatBytes(after)}. The text in the library didn't change.` });
+      router.refresh();
+    } catch (e) {
+      setRetrying((r) => ({ ...r, [doc.id]: "error" }));
+      setMessage({ ok: false, message: (e as Error).message });
+    }
+  }
+
+  async function typedCopy(doc: DocRow) {
+    const ok = window.confirm(
+      `Replace “${doc.title}” with a typed Word copy?\n\n` +
+        "• The photos are deleted to save storage.\n" +
+        "• Drawings, diagrams and colours are lost.\n" +
+        "• Misread words can't be checked against the photos any more, and the file can't be read again.\n" +
+        "• The AI Tutor works exactly the same.\n\nThis can't be undone.",
+    );
+    if (!ok) return;
+    setRetrying((r) => ({ ...r, [doc.id]: { label: "Starting" } }));
+    try {
+      const { before, after } = await replaceWithTypedCopy(doc, (s) => setRetrying((r) => ({ ...r, [doc.id]: s })));
+      setRetrying((r) => {
+        const next = { ...r };
+        delete next[doc.id];
+        return next;
+      });
+      setMessage({ ok: true, message: `“${doc.title}” is now a typed Word copy: ${formatBytes(before)} → ${formatBytes(after)}.` });
       router.refresh();
     } catch (e) {
       setRetrying((r) => ({ ...r, [doc.id]: "error" }));
@@ -396,6 +428,22 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                     <Minimize2 size={15} aria-hidden /> Make smaller
                   </button>
                 )}
+                {isAdmin &&
+                  d.file_path &&
+                  d.processing === "ready" &&
+                  d.chunk_count > 0 &&
+                  (d.mime_type === "application/pdf" || d.mime_type.startsWith("image/")) &&
+                  (looksPhotoHeavy(d.file_size, d.page_count, d.mime_type) || /-small\.(pdf|jpg)$/.test(d.file_path)) &&
+                  (!r || r === "error") && (
+                    <button
+                      type="button"
+                      onClick={() => typedCopy(d)}
+                      className={buttonClass("secondary", "!px-3 !py-1.5")}
+                      title="Replace the photos with a much smaller typed Word copy"
+                    >
+                      <FileText size={15} aria-hidden /> Replace with typed copy
+                    </button>
+                  )}
                 {canDownload && (
                   <button type="button" onClick={() => download(d)} className="rounded-lg p-2 text-mira-muted hover:bg-mira-page hover:text-mira-ink" aria-label={`Download ${d.title}`} title="Download original">
                     <Download size={17} />

@@ -7,8 +7,9 @@
 //                         Students: own uploads only. Admin: any document.
 //   text_only  { ids }  -> admin only: removes original files of shared documents, keeps their text.
 //   replace_file { ids: [id], file: base64, kind, name }
-//                      -> swaps the stored file for a smaller copy made in the browser.
-//                         Uploader or admin; the new file must be a PDF/JPEG and smaller.
+//                      -> swaps the stored file for a smaller copy made in the browser:
+//                         a smaller PDF/JPEG (uploader or admin), or a typed Word copy (admin only).
+//                         The new file must be smaller.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 
@@ -100,31 +101,41 @@ Deno.serve(async (req) => {
       if (!doc || docs!.length !== 1) return json(400, { error: "Choose one document." });
       if (!isAdmin && doc.uploader_id !== who.user.id) return json(403, { error: "You can only change your own uploads." });
       if (!doc.file_path || !doc.uploader_id) return json(400, { error: "This document has no stored file." });
-      const kind = body.kind === "application/pdf" || body.kind === "image/jpeg" ? body.kind : null;
+      const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const kind = body.kind === "application/pdf" || body.kind === "image/jpeg" || body.kind === DOCX ? body.kind : null;
       if (!kind || typeof body.file !== "string") return json(400, { error: "The smaller copy wasn't sent correctly." });
+      if (kind === DOCX && !isAdmin) return json(403, { error: "Only the administrator can replace a file with a typed copy." });
       let bytes: Uint8Array;
       try {
         bytes = decodeBase64(body.file);
       } catch {
         return json(400, { error: "The smaller copy wasn't sent correctly." });
       }
-      const looksRight = kind === "application/pdf" ? new TextDecoder().decode(bytes.subarray(0, 5)) === "%PDF-" : bytes[0] === 0xff && bytes[1] === 0xd8;
+      const looksRight =
+        kind === "application/pdf"
+          ? new TextDecoder().decode(bytes.subarray(0, 5)) === "%PDF-"
+          : kind === DOCX
+            ? bytes[0] === 0x50 && bytes[1] === 0x4b // zip
+            : bytes[0] === 0xff && bytes[1] === 0xd8;
       if (!looksRight) return json(400, { error: "The smaller copy isn't a valid file." });
       if (bytes.length >= Number(doc.file_size)) return json(400, { error: "The new copy isn't smaller, so nothing was changed." });
 
       const base = safeName(String(body.name ?? "file")).replace(/\.(pdf|jpe?g|png)$/i, "");
-      const newPath = `${doc.uploader_id}/${doc.id}/${base}-small.${kind === "application/pdf" ? "pdf" : "jpg"}`;
+      const newPath =
+        kind === DOCX ? `${doc.uploader_id}/${doc.id}/${base}-typed.docx` : `${doc.uploader_id}/${doc.id}/${base}-small.${kind === "application/pdf" ? "pdf" : "jpg"}`;
       if (newPath === doc.file_path) return json(400, { error: "This file was already made smaller." });
       const { error: upErr } = await admin.storage.from("documents").upload(newPath, bytes, { contentType: kind, upsert: true });
       if (upErr) return json(500, { error: "The smaller copy couldn't be saved. Nothing was changed." });
-      const { error: dbErr } = await admin.from("documents").update({ file_path: newPath, file_size: bytes.length, mime_type: kind }).eq("id", doc.id);
+      const changes: Record<string, unknown> = { file_path: newPath, file_size: bytes.length, mime_type: kind };
+      if (kind === DOCX) changes.unreadable_pages = [];
+      const { error: dbErr } = await admin.from("documents").update(changes).eq("id", doc.id);
       if (dbErr) {
         await admin.storage.from("documents").remove([newPath]);
         return json(500, { error: "The document couldn't be updated. Nothing was changed." });
       }
       await admin.storage.from("documents").remove([doc.file_path]);
       const recovered = Number(doc.file_size) - bytes.length;
-      await log("library.made_smaller", { title: doc.title, before: Number(doc.file_size), after: bytes.length });
+      await log(kind === DOCX ? "library.typed_copy" : "library.made_smaller", { title: doc.title, before: Number(doc.file_size), after: bytes.length });
       return json(200, { before: Number(doc.file_size), after: bytes.length, recovered });
     }
 
