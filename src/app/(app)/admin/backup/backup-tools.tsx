@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DatabaseBackup, Download, LockKeyhole, RotateCcw, ShieldCheck } from "lucide-react";
 import { Card, buttonClass, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { formatBytes } from "@/lib/library/labels";
 import { retryIndexing } from "@/lib/library/upload";
 import {
   BackupError,
@@ -82,7 +83,7 @@ export function BackupTools({ lastBackupAt }: { lastBackupAt: string | null }) {
       const done = await call({ action: "done" });
       setLast(done.last_backup_at);
       const total = Object.values(data.tables).reduce((n, r) => n + (r?.length ?? 0), 0);
-      setMade(`Saved “${name}” to your Downloads (${total.toLocaleString()} records, ${(file.length / 1024 / 1024).toFixed(1)} MB).`);
+      setMade(`Saved “${name}” to your Downloads (${total.toLocaleString()} records, ${formatBytes(file.length)}). It only opens inside Nurse Mira's Backups page — your computer won't know what to do with it, and that's normal.`);
       setPw("");
       setPw2("");
       router.refresh();
