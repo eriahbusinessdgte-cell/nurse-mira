@@ -6,7 +6,7 @@ export const STUDENT_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/subjects", label: "My Subjects", icon: "BookOpen" },
   { href: "/tutor", label: "AI Tutor", icon: "MessageCircleHeart" },
-  { href: "/review", label: "Review Center", icon: "GraduationCap", soon: true },
+  { href: "/review", label: "Review Center", icon: "GraduationCap" },
   { href: "/case-studies", label: "Case Studies", icon: "FileHeart", soon: true },
   { href: "/care-plans", label: "Nursing Care Plans", icon: "ClipboardList", soon: true },
   { href: "/quizzes", label: "Quizzes & Exams", icon: "ListChecks", soon: true },

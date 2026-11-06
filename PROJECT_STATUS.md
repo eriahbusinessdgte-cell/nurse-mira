@@ -2,7 +2,7 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 5 — AI Tutor (core tested live ✅; backup AI and handwriting reading still to do). Phases 2–4 complete ✅
+**Current phase:** Phase 6 — Study tools (Review Center built; waiting for Erika's test). Phases 2–5 complete ✅
 
 ## Done
 
@@ -96,6 +96,13 @@ Changes after testing: related library pages shown when the AI forgets to cite; 
 fair-share daily limit (D-033); natural-voice read-aloud (D-034).
 
 Cloudflare added 6 Nov: backup AI for the tutor + handwriting reader with "Read again" button (D-035, D-036). Tested: Erika pressed Read again on Pharmacology-01 Notes — 46 unread pages read (≈90 units/page, 4,300 units total), 70 text pieces, 0 unread pages; search now finds e.g. page 20 for "reverse transcriptase inhibitors" (score 0.998). Tutor also accepts a 0.80+ match when the page contains a distinctive word from the question (drug names).
+
+## Phase 6 progress (Study tools)
+
+- Review Center built 6 Nov (D-039): `review_sheets` table, `review` function, /review page with year/semester/subject/topic,
+  six tabs (Overview, Terms, Nursing focus, Practice questions, Flashcards, Quick review), print, "Ask the AI Tutor" link.
+  Server test passed. Waiting: Erika's live test.
+- Next: Quizzes & Exams → Case Study Builder → NCP Builder → My Planner.
 
 ## Known problems
 

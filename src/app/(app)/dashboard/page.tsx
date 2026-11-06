@@ -128,11 +128,11 @@ async function Dashboard() {
             <p className="mt-3 text-lg font-semibold">AI Tutor</p>
             <p className="text-sm opacity-80">Tea Mode and Clinical Mode explanations, with sources from the shared library.</p>
           </Link>
-          <div className="rounded-2xl bg-mira-blue p-5 text-white">
+          <Link href="/review" className="rounded-2xl bg-mira-blue p-5 text-white">
             <Sparkles size={28} aria-hidden />
             <p className="mt-3 text-lg font-semibold">Review Center</p>
-            <p className="text-sm opacity-80">Summaries, flashcards and practice questions from shared reviewers — coming soon.</p>
-          </div>
+            <p className="text-sm opacity-80">Study sheets with summaries, flashcards and practice questions from the shared library.</p>
+          </Link>
         </section>
       </div>
 
