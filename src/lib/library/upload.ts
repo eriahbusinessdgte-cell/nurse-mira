@@ -84,6 +84,7 @@ export async function uploadDocument(input: UploadInput, onStep: (s: Step) => vo
       rights_confirmed: input.rights_confirmed,
       page_count: input.extracted.pageCount,
       text_chars: totalChars(input.extracted.pages),
+      unreadable_pages: input.extracted.unreadablePages,
       processing: "uploading",
     })
     .select("id")
@@ -140,4 +141,55 @@ export async function retryIndexing(documentId: string, onStep: (s: Step) => voi
     await supabase.from("documents").update({ processing: "failed", processing_error: message }).eq("id", documentId);
     throw new Error(message);
   }
+}
+
+/**
+ * "Read again" button: downloads the stored file, reads every page again (including
+ * handwriting), replaces the document's text pieces and rebuilds its search index.
+ */
+export async function rereadDocument(
+  doc: { id: string; file_path: string | null; mime_type: string; original_filename: string },
+  onStep: (s: Step) => void,
+): Promise<{ unreadable: number[]; notice?: string }> {
+  if (!doc.file_path) throw new Error("The original file isn't stored any more, so it can't be read again.");
+  const supabase = createClient();
+  onStep({ label: "Getting the file" });
+  const { data: blob, error } = await supabase.storage.from("documents").download(doc.file_path);
+  if (error || !blob) throw new Error("The file couldn't be downloaded. Please try again.");
+  const file = new File([blob], doc.original_filename, { type: doc.mime_type });
+
+  const { extractText } = await import("./extract");
+  const extracted = await extractText(file, (message) => onStep({ label: message }));
+  const chunks = chunkPages(extracted.pages);
+  if (chunks.length === 0) throw new Error(extracted.notice ?? "No readable text was found. Nothing was changed.");
+
+  onStep({ label: "Replacing the old text" });
+  const { error: delError } = await supabase.from("document_chunks").delete().eq("document_id", doc.id);
+  if (delError) throw new Error("The old text couldn't be removed. Nothing was changed.");
+  for (let i = 0; i < chunks.length; i += 100) {
+    const batch = chunks.slice(i, i + 100).map((c) => ({ ...c, document_id: doc.id }));
+    const { error: insError } = await supabase.from("document_chunks").insert(batch);
+    if (insError) {
+      await supabase.from("documents").update({ processing: "failed", processing_error: "The new text couldn't be saved. Press Read again to retry." }).eq("id", doc.id);
+      throw new Error("The new text couldn't be saved. Please press Read again.");
+    }
+  }
+  await supabase
+    .from("documents")
+    .update({
+      chunk_count: chunks.length,
+      text_chars: totalChars(extracted.pages),
+      unreadable_pages: extracted.unreadablePages,
+      processing: "processing",
+      processing_error: null,
+    })
+    .eq("id", doc.id);
+  try {
+    await runIndexing(doc.id, onStep);
+  } catch (e) {
+    const message = `${(e as Error).message} You can press Retry to continue where it stopped.`;
+    await supabase.from("documents").update({ processing: "failed", processing_error: message }).eq("id", doc.id);
+    throw new Error(message);
+  }
+  return { unreadable: extracted.unreadablePages, notice: extracted.notice };
 }

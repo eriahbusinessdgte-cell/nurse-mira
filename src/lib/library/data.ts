@@ -5,7 +5,7 @@ import type { DocRow } from "@/components/document-list";
 import type { SubjectLite, TopicLite } from "./suggest";
 
 export const DOC_COLUMNS =
-  "id, title, original_filename, uploader_id, file_path, file_size, visibility, status, processing, processing_error, subject_id, topic_id, source_type, allow_download, chunk_count, page_count, created_at, year_level, semester, sha256";
+  "id, title, original_filename, uploader_id, file_path, file_size, visibility, status, processing, processing_error, subject_id, topic_id, source_type, allow_download, chunk_count, page_count, created_at, year_level, semester, sha256, mime_type, unreadable_pages";
 
 export async function loadCurriculum(supabase: SupabaseClient) {
   const [{ data: subjects }, { data: topics }] = await Promise.all([

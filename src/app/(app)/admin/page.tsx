@@ -37,7 +37,8 @@ async function Overview() {
   const { supabase, profile } = await requireProfile("admin");
 
   const today = manilaDay();
-  const [active, inactive, notSetUp, subjects, activity, usage, limitRow] = await Promise.all([
+  const utcToday = new Date().toISOString().slice(0, 10);
+  const [active, inactive, notSetUp, subjects, activity, usage, limitRow, cf] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", true),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", false),
     supabase
@@ -54,7 +55,9 @@ async function Overview() {
       .limit(8),
     supabase.from("ai_usage").select("student_id, answers, day").gte("day", manilaDay(6)),
     supabase.rpc("student_daily_limit"),
+    supabase.from("cloudflare_usage").select("neurons, pages, answers").eq("day", utcToday).maybeSingle(),
   ]);
+  const cfUsed = Math.round(Number(cf.data?.neurons ?? 0));
   const usageRows = (usage.data ?? []) as { student_id: string; answers: number; day: string }[];
   const answersToday = usageRows.filter((r) => r.day === today).reduce((n, r) => n + r.answers, 0);
   const answersWeek = usageRows.reduce((n, r) => n + r.answers, 0);
@@ -110,6 +113,10 @@ async function Overview() {
           <p className="text-sm text-mira-muted">
             {answersToday} answer{answersToday === 1 ? "" : "s"} today from {studentsToday} student{studentsToday === 1 ? "" : "s"} · {answersWeek} in the last 7 days · each student can ask{" "}
             {dailyLimit} a day right now (70 shared equally among {active.count ?? 0} active student{active.count === 1 ? "" : "s"}). Only counts are shown — students&apos; conversations stay private.
+          </p>
+          <p className="mt-1 text-sm text-mira-muted">
+            Backup AI and handwriting reader (Cloudflare): {cfUsed.toLocaleString()} of 10,000 free units used today
+            {cf.data ? ` · ${cf.data.pages} page${cf.data.pages === 1 ? "" : "s"} read · ${cf.data.answers} backup answer${cf.data.answers === 1 ? "" : "s"}` : ""}. Resets at 8:00 AM.
           </p>
         </div>
       </Card>

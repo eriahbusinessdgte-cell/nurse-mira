@@ -73,12 +73,25 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
     try {
       setReading("Checking the file…");
       const sha = await sha256(file);
+
+      // Duplicates (checked first, so nothing is read twice): is this exact file already in the shared library?
+      const supabase = createClient();
+      const { data: dupes } = await supabase.rpc("find_shared_duplicate", { p_sha256: sha });
+      const dup = (dupes as { title: string; status: string }[] | null)?.[0];
+      if (dup) {
+        setError(
+          `This exact file is already in the shared library as “${dup.title}”${dup.status === "archived" ? " (archived)" : ""}, so there's no need to upload it again. Everyone can already learn from it.`,
+        );
+        setReading(null);
+        return;
+      }
+
       const extracted = await extractText(file, setReading);
       const chars = totalChars(extracted.pages);
       if (chars < 100) {
         throw new ExtractError(
           extracted.unreadablePages.length
-            ? "This file looks like photos of handwritten notes. Nurse Mira can't read handwriting yet — that's coming with the AI Tutor update. Please keep the file and upload it then."
+            ? `Nurse Mira couldn't read the writing in this file${extracted.notice ? ` — ${extracted.notice}` : ". The photos may be blurry, dark or at an angle. Try clearer, well-lit photos taken straight on."}`
             : "Nurse Mira couldn't find readable text in this file, so it can't be added. If it's a photo or scan, make sure the text is clear and well lit, then try again.",
         );
       }
@@ -91,23 +104,12 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       if (extracted.unreadablePages.length) {
         const list = extracted.unreadablePages.slice(0, 8).join(", ") + (extracted.unreadablePages.length > 8 ? "…" : "");
         notes.push(
-          `${extracted.unreadablePages.length} photo page(s) (page ${list}) look handwritten or unclear, so Nurse Mira couldn't read them yet. You can still upload — handwriting reading arrives with the AI Tutor update, and these pages can be re-read then.`,
+          `${extracted.unreadablePages.length} photo page(s) (page ${list}) couldn't be read${extracted.notice ? ` — ${extracted.notice}` : " (they may be blurry or very faint)"}. You can still upload; press “Read again” on the document later to try those pages again.`,
         );
       } else if (extracted.method !== "text") {
-        notes.push("Some pages were read from photos, so a few words may be misread. Please check the title and subject.");
+        notes.push("Some pages were read from photos or handwriting, so a few words may be misread. Please check the title and subject.");
       }
 
-      // Duplicates: is this exact file already in the shared library?
-      const supabase = createClient();
-      const { data: dupes } = await supabase.rpc("find_shared_duplicate", { p_sha256: sha });
-      const dup = (dupes as { title: string; status: string }[] | null)?.[0];
-      if (dup) {
-        setError(
-          `This exact file is already in the shared library as “${dup.title}”${dup.status === "archived" ? " (archived)" : ""}, so there's no need to upload it again. Everyone can already learn from it.`,
-        );
-        setReading(null);
-        return;
-      }
 
       // Make photo-heavy files smaller before uploading (free, in the browser).
       const smaller = await maybeShrink(file, kind, extracted.pageCount, extracted.imagePages, setReading);
@@ -287,6 +289,7 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
                           graded assignments.
                         </li>
                         <li>Don&apos;t upload paid review-center materials or textbooks without permission.</li>
+                        <li>Photo and handwritten pages are read by Nurse Mira&apos;s page reader, an outside AI service (Cloudflare).</li>
                       </ul>
                       <label className="mt-3 flex items-start gap-2 font-medium">
                         <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 h-4 w-4 accent-mira-blue" />

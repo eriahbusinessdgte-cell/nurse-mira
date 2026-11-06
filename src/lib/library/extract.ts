@@ -1,8 +1,11 @@
 "use client";
 
-// Reads the text out of an uploaded file, in the student's own browser, using
-// free libraries. Nothing is sent to an outside service. Heavy libraries are
-// loaded only when needed.
+// Reads the text out of an uploaded file in the student's own browser, using free
+// libraries. Typed text never leaves the browser. Photo pages (handwriting, scans)
+// are sent one at a time to Nurse Mira's page reader (Cloudflare's free vision AI);
+// if that isn't available, the free in-browser reader is used instead.
+// Heavy libraries are loaded only when needed.
+import { createClient } from "@/lib/supabase/client";
 import type { Page } from "./chunk";
 
 export const ACCEPTED: Record<string, string> = {
@@ -16,6 +19,9 @@ export const ACCEPTED: Record<string, string> = {
 export const ACCEPT_ATTR = ".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png";
 export const MAX_BYTES = 25 * 1024 * 1024;
 const MAX_OCR_PAGES = 30;
+const MAX_VISION_PAGES = 80;
+const VISION_WIDTH = 1600; // pixels; enough for handwriting, small enough to send quickly
+const VISION_PARALLEL = 3;
 const MIN_PAGE_CHARS = 40; // a page with less typed text than this is treated as a photo/scan
 const MIN_OCR_CONFIDENCE = 60; // below this, the free reader's result is too unreliable to keep
 
@@ -48,6 +54,8 @@ export type Extracted = {
   imagePages: number;
   /** Photo pages whose writing couldn't be read reliably (often handwriting). */
   unreadablePages: number[];
+  /** A message about the page reader (e.g. today's free reading is used up). */
+  notice?: string;
 };
 type Progress = (message: string) => void;
 
@@ -69,6 +77,58 @@ async function ocrImages(images: (Blob | HTMLCanvasElement)[], onProgress: Progr
   } finally {
     await worker.terminate();
   }
+}
+
+type VisionResult = { ok: true; text: string; readable: boolean } | { ok: false; stop: boolean; message: string };
+
+function canvasToBase64(canvas: HTMLCanvasElement): Promise<string> {
+  // Shrink very large pages first.
+  let source = canvas;
+  if (canvas.width > VISION_WIDTH) {
+    const scale = VISION_WIDTH / canvas.width;
+    source = document.createElement("canvas");
+    source.width = VISION_WIDTH;
+    source.height = Math.round(canvas.height * scale);
+    source.getContext("2d")!.drawImage(canvas, 0, 0, source.width, source.height);
+  }
+  return new Promise((resolve, reject) =>
+    source.toBlob(
+      (blob) => {
+        if (source !== canvas) source.width = 0;
+        if (!blob) return reject(new Error("Couldn't prepare the page picture."));
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      },
+      "image/jpeg",
+      0.8,
+    ),
+  );
+}
+
+/** Sends one page picture to Nurse Mira's page reader. */
+export async function readWithVision(canvas: HTMLCanvasElement): Promise<VisionResult> {
+  try {
+    const image = await canvasToBase64(canvas);
+    const { data, error } = await createClient().functions.invoke("read-page", { body: { image } });
+    if (error || !data) return { ok: false, stop: false, message: "The page reader couldn't be reached." };
+    if (data.kind === "budget" || data.kind === "unavailable") return { ok: false, stop: true, message: String(data.error) };
+    if (data.error) return { ok: false, stop: false, message: String(data.error) };
+    return { ok: true, text: String(data.text ?? ""), readable: !!data.readable };
+  } catch {
+    return { ok: false, stop: false, message: "The page reader couldn't be reached." };
+  }
+}
+
+async function imageToCanvas(file: Blob): Promise<HTMLCanvasElement> {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return canvas;
 }
 
 async function loadPdf(file: File) {
@@ -99,35 +159,78 @@ async function readPdf(file: File, onProgress: Progress): Promise<Extracted> {
   // 2. Pages with (almost) no typed text are photos or scans: read them as pictures.
   const photoPages = pages.filter((p) => p.text.trim().length < MIN_PAGE_CHARS).map((p) => p.page as number);
   const unreadable: number[] = [];
+  let notice: string | undefined;
   if (photoPages.length) {
-    const toRead = photoPages.slice(0, MAX_OCR_PAGES);
-    unreadable.push(...photoPages.slice(MAX_OCR_PAGES));
-    const canvases: HTMLCanvasElement[] = [];
-    for (const n of toRead) {
-      onProgress(`Preparing photo page ${n}…`);
+    const render = async (n: number, width: number) => {
       const page = await doc.getPage(n);
-      const viewport = page.getViewport({ scale: 2 });
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: Math.min(3, Math.max(1, width / base.width)) });
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvas, viewport }).promise;
-      canvases.push(canvas);
-    }
-    const results = await ocrImages(canvases, onProgress, (i) => `Reading photo page ${i + 1} of ${toRead.length}…`);
-    results.forEach((r, i) => {
-      const n = toRead[i];
+      return canvas;
+    };
+    const setText = (n: number, text: string) => {
       const target = pages.find((p) => p.page === n)!;
-      if (r.confidence >= MIN_OCR_CONFIDENCE && r.text.trim().length >= MIN_PAGE_CHARS) {
-        target.text = `${target.text}\n${r.text}`.trim();
-      } else {
-        unreadable.push(n);
+      target.text = `${target.text}\n${text}`.trim();
+    };
+
+    // 2a. Nurse Mira's page reader (reads handwriting), a few pages at a time.
+    const visionPages = photoPages.slice(0, MAX_VISION_PAGES);
+    const leftover: number[] = photoPages.slice(MAX_VISION_PAGES);
+    let stopped = false;
+    let done = 0;
+    const queue = [...visionPages];
+    const worker = async () => {
+      while (queue.length) {
+        const n = queue.shift()!;
+        if (stopped) {
+          leftover.push(n);
+          continue;
+        }
+        const canvas = await render(n, VISION_WIDTH);
+        const r = await readWithVision(canvas);
+        canvas.width = 0;
+        done++;
+        onProgress(`Reading photo page ${done} of ${visionPages.length} (handwriting too)…`);
+        if (r.ok) {
+          if (r.readable) setText(n, r.text);
+          else unreadable.push(n);
+        } else {
+          if (r.stop) {
+            stopped = true;
+            notice = r.message;
+          }
+          leftover.push(n);
+        }
       }
-      canvases[i].width = 0; // free memory
-    });
+    };
+    onProgress(`Reading photo page 1 of ${visionPages.length} (handwriting too)…`);
+    await Promise.all(Array.from({ length: Math.min(VISION_PARALLEL, visionPages.length) }, worker));
+
+    // 2b. Anything left: the free in-browser reader (good for clear print, weak on handwriting).
+    leftover.sort((a, b) => a - b);
+    const toRead = leftover.slice(0, MAX_OCR_PAGES);
+    unreadable.push(...leftover.slice(MAX_OCR_PAGES));
+    if (toRead.length) {
+      const canvases: HTMLCanvasElement[] = [];
+      for (const n of toRead) {
+        onProgress(`Preparing photo page ${n}…`);
+        canvases.push(await render(n, 1200));
+      }
+      const results = await ocrImages(canvases, onProgress, (i) => `Reading photo page ${i + 1} of ${toRead.length}…`);
+      results.forEach((r, i) => {
+        const n = toRead[i];
+        if (r.confidence >= MIN_OCR_CONFIDENCE && r.text.trim().length >= MIN_PAGE_CHARS) setText(n, r.text);
+        else unreadable.push(n);
+        canvases[i].width = 0; // free memory
+      });
+    }
   }
 
   const method = photoPages.length === 0 ? "text" : photoPages.length === pages.length ? "ocr" : "mixed";
-  return { pages, pageCount: doc.numPages, method, imagePages: photoPages.length, unreadablePages: unreadable.sort((a, b) => a - b) };
+  return { pages, pageCount: doc.numPages, method, imagePages: photoPages.length, unreadablePages: unreadable.sort((a, b) => a - b), notice };
 }
 
 async function readDocx(file: File): Promise<Extracted> {
@@ -168,7 +271,14 @@ export async function extractText(file: File, onProgress: Progress = () => {}): 
   if (kind === "text/plain") {
     return { pages: [{ page: null, text: await file.text() }], pageCount: null, method: "text", imagePages: 0, unreadablePages: [] };
   }
+  onProgress("Reading the photo (handwriting too)…");
+  const canvas = await imageToCanvas(file);
+  const v = await readWithVision(canvas);
+  canvas.width = 0;
+  if (v.ok) {
+    return { pages: [{ page: 1, text: v.readable ? v.text : "" }], pageCount: 1, method: "ocr", imagePages: 1, unreadablePages: v.readable ? [] : [1] };
+  }
   const [r] = await ocrImages([file], onProgress, () => "Reading text from the photo…");
   const ok = r.confidence >= MIN_OCR_CONFIDENCE;
-  return { pages: [{ page: 1, text: ok ? r.text : "" }], pageCount: 1, method: "ocr", imagePages: 1, unreadablePages: ok ? [] : [1] };
+  return { pages: [{ page: 1, text: ok ? r.text : "" }], pageCount: 1, method: "ocr", imagePages: 1, unreadablePages: ok ? [] : [1], notice: v.message };
 }

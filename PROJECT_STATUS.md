@@ -95,7 +95,7 @@ microphone, dashboard Continue Studying, admin AI usage card ✅.
 Changes after testing: related library pages shown when the AI forgets to cite; safety note on every safety answer;
 fair-share daily limit (D-033); natural-voice read-aloud (D-034).
 
-Still to do in Phase 5: Cloudflare backup AI (needs Erika's free account), handwriting reading + Re-read button.
+Cloudflare added 6 Nov: backup AI for the tutor + handwriting reader with "Read again" button (D-035, D-036). Waiting: Erika presses Read again on Pharmacology-01 Notes.
 
 ## Known problems
 

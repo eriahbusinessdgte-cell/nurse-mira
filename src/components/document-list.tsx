@@ -2,13 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Download, Globe2, Lock, Pencil, RotateCw, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Download, Globe2, Lock, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
 import { Badge, buttonClass, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { deleteDocuments, setAllowDownload, setArchived, updateDocument, type Result } from "@/lib/library/actions";
 import { formatBytes, PROCESSING_LABEL, sourceLabel, SOURCE_TYPES } from "@/lib/library/labels";
 import type { SubjectLite, TopicLite } from "@/lib/library/suggest";
-import { retryIndexing, type Step } from "@/lib/library/upload";
+import { rereadDocument, retryIndexing, type Step } from "@/lib/library/upload";
 
 export type DocRow = {
   id: string;
@@ -29,6 +29,8 @@ export type DocRow = {
   chunk_count: number;
   page_count: number | null;
   created_at: string;
+  mime_type: string;
+  unreadable_pages: number[] | null;
 };
 
 type Mode = "admin" | "mine" | "shared";
@@ -231,6 +233,29 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
     window.location.href = data.signedUrl;
   }
 
+  async function reread(doc: DocRow) {
+    setRetrying((r) => ({ ...r, [doc.id]: { label: "Starting" } }));
+    try {
+      const result = await rereadDocument(doc, (s) => setRetrying((r) => ({ ...r, [doc.id]: s })));
+      setRetrying((r) => {
+        const next = { ...r };
+        delete next[doc.id];
+        return next;
+      });
+      setMessage({
+        ok: true,
+        message:
+          result.unreadable.length === 0
+            ? `“${doc.title}” was read again — every page is now in the library.`
+            : `“${doc.title}” was read again. ${result.unreadable.length} page(s) still couldn't be read${result.notice ? ` (${result.notice})` : ""}.`,
+      });
+      router.refresh();
+    } catch (e) {
+      setRetrying((r) => ({ ...r, [doc.id]: "error" }));
+      setMessage({ ok: false, message: (e as Error).message });
+    }
+  }
+
   async function retry(doc: DocRow) {
     setRetrying((r) => ({ ...r, [doc.id]: { label: "Starting" } }));
     try {
@@ -310,6 +335,13 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                   {d.visibility === "shared" && !d.file_path && <Badge tone="gray">Text only</Badge>}
                   {d.visibility === "shared" && d.allow_download && d.file_path && <Badge tone="blue">Download allowed</Badge>}
                 </div>
+                {(d.unreadable_pages?.length ?? 0) > 0 && d.processing === "ready" && (!r || r === "error") && (
+                  <p className="mt-1.5 text-sm text-amber-700">
+                    {d.unreadable_pages!.length} page{d.unreadable_pages!.length === 1 ? "" : "s"} couldn&apos;t be read yet
+                    {d.unreadable_pages!.length <= 8 ? ` (page ${d.unreadable_pages!.join(", ")})` : ""}.
+                    {(own || isAdmin) && " Press “Read again” to try the handwriting reader."}
+                  </p>
+                )}
                 {d.processing === "failed" && d.processing_error && (!r || r === "error") && (
                   <p className="mt-1.5 text-sm text-mira-danger">{d.processing_error}</p>
                 )}
@@ -327,6 +359,20 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                     <RotateCw size={15} aria-hidden /> Retry
                   </button>
                 )}
+                {(own || isAdmin) &&
+                  d.file_path &&
+                  d.processing === "ready" &&
+                  (d.mime_type === "application/pdf" || d.mime_type.startsWith("image/")) &&
+                  (!r || r === "error") && (
+                    <button
+                      type="button"
+                      onClick={() => reread(d)}
+                      className={buttonClass((d.unreadable_pages?.length ?? 0) > 0 ? "accent" : "secondary", "!px-3 !py-1.5")}
+                      title="Read every page again, including handwriting"
+                    >
+                      <ScanText size={15} aria-hidden /> Read again
+                    </button>
+                  )}
                 {canDownload && (
                   <button type="button" onClick={() => download(d)} className="rounded-lg p-2 text-mira-muted hover:bg-mira-page hover:text-mira-ink" aria-label={`Download ${d.title}`} title="Download original">
                     <Download size={17} />

@@ -5,7 +5,8 @@
 //  or { error, kind: "limit" | "unavailable" | "invalid" }
 //
 // Steps: check the student and their daily limit → search the shared library →
-// ask Groq (main model, then a smaller backup model) → save both messages →
+// ask Groq's main model → if busy, the same model on Cloudflare (free allowance) →
+// then Groq's smaller model → save both messages →
 // keep a short study summary for "Continue Studying".
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { isSafetyTopic, summaryPrompt, systemPrompt, type Source } from "./prompt.ts";
@@ -14,6 +15,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GROQ_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
+const CF_ACCOUNT = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")?.trim() ?? "";
+const CF_TOKEN = Deno.env.get("CLOUDFLARE_API_TOKEN")?.trim() ?? "";
+const CF_MODEL = "@cf/openai/gpt-oss-120b";
+const CF_DAILY_LIMIT = 9700; // free allowance is 10,000 neurons a day; keep a small margin
 
 const MAIN_MODEL = "openai/gpt-oss-120b";
 const BACKUP_MODEL = "openai/gpt-oss-20b";
@@ -56,6 +61,28 @@ async function groq(model: string, messages: ChatMessage[], opts: { maxTokens: n
     throw Object.assign(new Error(`Groq ${res.status}`), { status: res.status, detail: detail.slice(0, 300) });
   }
   const data = await res.json();
+  const text: string = data?.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) throw Object.assign(new Error("Empty answer"), { status: 502 });
+  return text.trim();
+}
+
+// deno-lint-ignore no-explicit-any
+async function cloudflare(db: any, messages: ChatMessage[], maxTokens: number) {
+  if (!CF_ACCOUNT || !CF_TOKEN) throw Object.assign(new Error("Cloudflare not set up"), { status: 503 });
+  const { data: usage } = await db.from("cloudflare_usage").select("neurons").eq("day", new Date().toISOString().slice(0, 10)).maybeSingle();
+  if (Number(usage?.neurons ?? 0) >= CF_DAILY_LIMIT) throw Object.assign(new Error("Cloudflare allowance used"), { status: 429 });
+  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/v1/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: CF_MODEL, messages, max_tokens: maxTokens, temperature: 0.4, reasoning_effort: "low" }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw Object.assign(new Error(`Cloudflare ${res.status}`), { status: res.status, detail: detail.slice(0, 300) });
+  }
+  const data = await res.json();
+  await db.rpc("add_cloudflare_usage", { p_neurons: Number(data?.usage?.neurons ?? 250), p_kind: "answer" });
   const text: string = data?.choices?.[0]?.message?.content ?? "";
   if (!text.trim()) throw Object.assign(new Error("Empty answer"), { status: 502 });
   return text.trim();
@@ -174,24 +201,32 @@ Deno.serve(async (req) => {
 
   let answer = "";
   let model = MAIN_MODEL;
-  try {
-    answer = await groq(MAIN_MODEL, chat, { maxTokens: 1800 });
-  } catch (e) {
-    console.error("main model failed", (e as { status?: number }).status, (e as { detail?: string }).detail);
+  let provider = "groq";
+  const attempts: { provider: string; model: string; run: () => Promise<string> }[] = [
+    { provider: "groq", model: MAIN_MODEL, run: () => groq(MAIN_MODEL, chat, { maxTokens: 1800 }) },
+    { provider: "cloudflare", model: CF_MODEL, run: () => cloudflare(db, chat, 1800) },
+    { provider: "groq", model: BACKUP_MODEL, run: () => groq(BACKUP_MODEL, chat, { maxTokens: 1600 }) },
+  ];
+  let lastStatus: number | undefined;
+  for (const a of attempts) {
     try {
-      model = BACKUP_MODEL;
-      answer = await groq(BACKUP_MODEL, chat, { maxTokens: 1600 });
-    } catch (e2) {
-      const status = (e2 as { status?: number }).status;
-      console.error("backup model failed", status, (e2 as { detail?: string }).detail);
-      return json(origin, 200, {
-        kind: "unavailable",
-        error:
-          status === 429
-            ? "Nurse Mira's free AI has reached its limit for now. Please try again in a little while. Your saved conversations and library still work."
-            : "The AI Tutor can't be reached right now. Please try again in a few minutes. Your saved conversations and library still work.",
-      });
+      answer = await a.run();
+      model = a.model;
+      provider = a.provider;
+      break;
+    } catch (e) {
+      lastStatus = (e as { status?: number }).status;
+      console.error(`${a.provider} ${a.model} failed`, lastStatus, (e as { detail?: string }).detail);
     }
+  }
+  if (!answer) {
+    return json(origin, 200, {
+      kind: "unavailable",
+      error:
+        lastStatus === 429
+          ? "Nurse Mira's free AI has reached its limit for now. Please try again in a little while. Your saved conversations and library still work."
+          : "The AI Tutor can't be reached right now. Please try again in a few minutes. Your saved conversations and library still work.",
+    });
   }
 
   // Keep only the sources the answer actually cited.
@@ -226,7 +261,7 @@ Deno.serve(async (req) => {
   await db.from("messages").insert({ conversation_id: conv.id, role: "user", content: question, mode });
   const { data: saved } = await db
     .from("messages")
-    .insert({ conversation_id: conv.id, role: "assistant", content: answer, sources: [...usedSources, ...relatedSources], mode, provider: "groq", model, safety_mode: safety })
+    .insert({ conversation_id: conv.id, role: "assistant", content: answer, sources: [...usedSources, ...relatedSources], mode, provider, model, safety_mode: safety })
     .select("id, role, content, sources, mode, safety_mode, created_at")
     .single();
   const newCount = conv.message_count + 2;
