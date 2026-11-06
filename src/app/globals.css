@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* Nurse Mira design tokens — Modern Academic: blue and white, warm yellow accent. */
+:root {
+  --mira-blue: #2148c0;
+  --mira-blue-dark: #19358f;
+  --mira-blue-soft: #eef2fd;
+  --mira-yellow: #f2c13d;
+  --mira-yellow-dark: #d9a520;
+  --mira-ink: #1d2433;
+  --mira-muted: #6b7385;
+  --mira-line: #e3e7f0;
+  --mira-page: #f4f6fb;
+  --mira-success: #2e9e5b;
+  --mira-warning: #d98a1c;
+  --mira-danger: #d14343;
+}
+
+@theme inline {
+  --color-mira-blue: var(--mira-blue);
+  --color-mira-blue-dark: var(--mira-blue-dark);
+  --color-mira-blue-soft: var(--mira-blue-soft);
+  --color-mira-yellow: var(--mira-yellow);
+  --color-mira-yellow-dark: var(--mira-yellow-dark);
+  --color-mira-ink: var(--mira-ink);
+  --color-mira-muted: var(--mira-muted);
+  --color-mira-line: var(--mira-line);
+  --color-mira-page: var(--mira-page);
+  --color-mira-success: var(--mira-success);
+  --color-mira-warning: var(--mira-warning);
+  --color-mira-danger: var(--mira-danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--mira-page);
+  color: var(--mira-ink);
+}
