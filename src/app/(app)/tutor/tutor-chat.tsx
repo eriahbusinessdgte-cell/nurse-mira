@@ -11,6 +11,7 @@ import {
   Mic,
   MicOff,
   Plus,
+  Settings2,
   SendHorizontal,
   ShieldAlert,
   Stethoscope,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { sourceLabel } from "@/lib/library/labels";
+import { englishVoices, saveVoiceName, savedVoiceName, speakPieces, toSpeech } from "@/lib/tutor/voice";
 import { deleteConversation } from "./actions";
 
 export type ConversationItem = {
@@ -70,15 +72,6 @@ type Recognition = {
 const when = (iso: string) => new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 
 const withCitationLinks = (text: string) => text.replace(/\[S(\d{1,2})\]/g, "[S$1](#source-$1)");
-
-const plain = (md: string) =>
-  md
-    .replace(/\[S\d{1,2}\]/g, "")
-    .replace(/[#*_`>|]/g, "")
-    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-    .replace(/-{3,}/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 
 function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking: boolean; onSpeak: () => void }) {
   return (
@@ -161,13 +154,30 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const tempCounter = useRef(0);
+  const stopSpeech = useRef<(() => void) | null>(null);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceName, setVoiceName] = useState<string>("");
+  const [voicePanel, setVoicePanel] = useState(false);
 
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
     // Feature detection has to run in the browser after the page loads.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVoiceSupported({ mic: !!(w.SpeechRecognition || w.webkitSpeechRecognition), speak: "speechSynthesis" in window });
+    const synth = window.speechSynthesis;
+    const loadVoices = () => {
+      const list = englishVoices(synth.getVoices());
+      setVoices(list);
+      const saved = savedVoiceName();
+      setVoiceName((cur) => cur || (saved && list.some((v) => v.name === saved) ? saved : (list[0]?.name ?? "")));
+    };
+    if (synth) {
+      loadVoices();
+      synth.addEventListener?.("voiceschanged", loadVoices);
+    }
     return () => {
+      synth?.removeEventListener?.("voiceschanged", loadVoices);
+      stopSpeech.current?.();
       window.speechSynthesis?.cancel();
       recognitionRef.current?.stop();
     };
@@ -262,25 +272,30 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   }
 
   function speak(m: ChatMessage) {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
+    if (!window.speechSynthesis) return;
+    stopSpeech.current?.();
     if (speakingId === m.id) {
-      synth.cancel();
       setSpeakingId(null);
       return;
     }
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(plain(m.content));
-    u.lang = "en-US";
-    u.rate = 1;
-    u.onend = () => setSpeakingId(null);
-    u.onerror = () => setSpeakingId(null);
     setSpeakingId(m.id);
-    synth.speak(u);
+    const voice = voices.find((v) => v.name === voiceName) ?? null;
+    stopSpeech.current = speakPieces(toSpeech(m.content), {
+      voice,
+      cheerful: (m.mode ?? mode) === "tea" && !m.safety_mode,
+      onEnd: () => setSpeakingId(null),
+    });
+  }
+
+  function tryVoice(name: string) {
+    stopSpeech.current?.();
+    setSpeakingId(null);
+    const voice = voices.find((v) => v.name === name) ?? null;
+    stopSpeech.current = speakPieces(["Hi! I'm Nurse Mira. Let's make studying a little more fun today!"], { voice, cheerful: true, onEnd: () => {} });
   }
 
   function newConversation() {
-    window.speechSynthesis?.cancel();
+    stopSpeech.current?.();
     router.push("/tutor");
   }
 
@@ -397,6 +412,48 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
           <span className="rounded-full bg-mira-page px-3 py-1 text-xs text-mira-muted" title="Resets at midnight, Philippine time">
             {remaining} of {limit} answers left today
           </span>
+          {voiceSupported.speak && voices.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setVoicePanel((o) => !o)}
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-mira-muted hover:bg-mira-page hover:text-mira-ink"
+                aria-expanded={voicePanel}
+              >
+                <Settings2 size={15} aria-hidden /> Voice
+              </button>
+              {voicePanel && (
+                <div className="absolute right-0 top-full z-30 mt-2 w-80 rounded-xl bg-white p-4 text-sm shadow-lg ring-1 ring-mira-line">
+                  <label className="mb-1 block font-medium" htmlFor="voice-pick">
+                    Nurse Mira&apos;s reading voice
+                  </label>
+                  <select
+                    id="voice-pick"
+                    value={voiceName}
+                    onChange={(e) => {
+                      setVoiceName(e.target.value);
+                      saveVoiceName(e.target.value);
+                      tryVoice(e.target.value);
+                    }}
+                    className="w-full rounded-lg border border-mira-line bg-white px-2 py-1.5"
+                  >
+                    {voices.map((v, i) => (
+                      <option key={v.name} value={v.name}>
+                        {v.name.replace(/^Microsoft /, "").replace(/ - English.*$/, "")} ({v.lang}){i === 0 ? " ★" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => tryVoice(voiceName)} className="mt-2 flex items-center gap-1.5 rounded-lg bg-mira-blue-soft px-3 py-1.5 font-medium text-mira-blue">
+                    <Volume2 size={15} aria-hidden /> Try it
+                  </button>
+                  <p className="mt-3 text-xs text-mira-muted">
+                    ★ = the most natural voice on this device. Voices come from your device and browser, so they differ between phones and laptops. For the
+                    most natural voices, use Microsoft Edge (look for names with &quot;Natural&quot;) or Chrome (&quot;Google&quot; voices).
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Messages */}
