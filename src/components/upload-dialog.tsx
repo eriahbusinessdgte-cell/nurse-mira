@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, FileUp, Globe2, Lock, Sparkles, Upload, X } from "lucide-react";
+import { CheckCircle2, FileUp, Sparkles, Upload, X } from "lucide-react";
 import { buttonClass, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { ACCEPT_ATTR, ACCEPTED, ExtractError, extractText, fileKind, sha256, type Extracted } from "@/lib/library/extract";
@@ -26,7 +26,6 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
-  const [visibility, setVisibility] = useState<"shared" | "private" | null>(null);
   const [rights, setRights] = useState(false);
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
@@ -45,7 +44,6 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
     setPrepared(null);
     setError(null);
     setWarning(null);
-    setVisibility(null);
     setRights(false);
     setTitle("");
     setSubjectId("");
@@ -88,13 +86,10 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       setSuggested({ subject: !!s.subject_id, topic: !!s.topic_id });
       if (extracted.method === "ocr") setWarning("This file was read from pictures, so some words may be misread. Please check the title and subject.");
 
-      // Duplicates
+      // Duplicates: is this exact file already in the shared library?
       const supabase = createClient();
-      const [{ data: shared }, { data: mine }] = await Promise.all([
-        supabase.rpc("find_shared_duplicate", { p_sha256: sha }),
-        supabase.from("documents").select("title").eq("sha256", sha).limit(1),
-      ]);
-      const dup = (shared as { title: string; status: string }[] | null)?.[0];
+      const { data: dupes } = await supabase.rpc("find_shared_duplicate", { p_sha256: sha });
+      const dup = (dupes as { title: string; status: string }[] | null)?.[0];
       if (dup) {
         setError(
           `This exact file is already in the shared library as “${dup.title}”${dup.status === "archived" ? " (archived)" : ""}, so there's no need to upload it again. Everyone can already learn from it.`,
@@ -102,7 +97,6 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
         setReading(null);
         return;
       }
-      if (mine && mine.length) setWarning(`You've uploaded this exact file before (“${mine[0].title}”). You can still upload it again if you meant to.`);
 
       setPrepared({ file, kind, sha, extracted, chars });
       setReading(null);
@@ -112,10 +106,10 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
     }
   }
 
-  const ready = prepared && visibility && title.trim() && subjectId && (visibility === "private" || rights);
+  const ready = prepared && title.trim() && subjectId && rights;
 
   async function startUpload() {
-    if (!prepared || !visibility || !subject) return;
+    if (!prepared || !subject) return;
     setError(null);
     try {
       await uploadDocument(
@@ -124,14 +118,14 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
           kind: prepared.kind,
           sha256: prepared.sha,
           extracted: prepared.extracted,
-          visibility,
+          visibility: "shared",
           title,
           subject_id: subject.id,
           topic_id: topicId || null,
           year_level: subject.year_level,
           semester: subject.semester,
           source_type: sourceType,
-          rights_confirmed: visibility === "shared" ? rights : false,
+          rights_confirmed: rights,
         },
         setStep,
       );
@@ -141,23 +135,6 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       setFinished(true); // the record exists (marked as needing attention) — refresh the list on close
     }
   }
-
-  const choice = (value: "shared" | "private", icon: React.ReactNode, heading: string, text: string) => (
-    <button
-      type="button"
-      onClick={() => setVisibility(value)}
-      aria-pressed={visibility === value}
-      className={`flex flex-1 gap-3 rounded-xl border p-4 text-left transition ${
-        visibility === value ? "border-mira-blue bg-mira-blue-soft" : "border-mira-line hover:border-mira-blue/40"
-      }`}
-    >
-      <span className="mt-0.5 text-mira-blue">{icon}</span>
-      <span>
-        <span className="block font-medium">{heading}</span>
-        <span className="block text-sm text-mira-muted">{text}</span>
-      </span>
-    </button>
-  );
 
   return (
     <>
@@ -185,9 +162,7 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
                     <CheckCircle2 size={44} className="mx-auto text-mira-success" aria-hidden />
                     <p className="mt-3 text-lg font-semibold">Uploaded and ready!</p>
                     <p className="mt-1 text-sm text-mira-muted">
-                      {visibility === "shared"
-                        ? "Nurse Mira can now use this reviewer to help every student."
-                        : "This document is private to you. Only you can see it."}
+                      It&apos;s now in the shared library, and Nurse Mira can use it to help every student.
                     </p>
                   </div>
                 ) : (
@@ -277,30 +252,29 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
 
                 {prepared && (
                   <>
-                    {/* Step 2: shared or private */}
-                    <div>
-                      <p className="mb-2 text-sm font-medium">What kind of document is this?</p>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        {choice("shared", <Globe2 size={20} />, "Shared reviewer", "Learning material that helps every Nurse Mira student.")}
-                        {choice("private", <Lock size={20} />, "Private document", "Your own notes, assignments or case material. Only you can see it.")}
-                      </div>
+                    {/* Sharing notice */}
+                    <div className="rounded-xl bg-mira-blue-soft p-4 text-sm text-mira-blue-dark">
+                      <p className="font-medium">How sharing works</p>
+                      <ul className="mt-1 list-disc space-y-1 pl-5">
+                        <li>
+                          Everything you upload joins Nurse Mira&apos;s <strong>shared library</strong>, so the AI Tutor can use it to help
+                          every student.
+                        </li>
+                        <li>
+                          All Nurse Mira students can see it in the shared library (your name isn&apos;t shown). The original file can be
+                          downloaded only if the administrator allows it.
+                        </li>
+                        <li>
+                          Upload study notes and reviewers only — <strong>never</strong> patient information, personal case studies or
+                          graded assignments.
+                        </li>
+                        <li>Don&apos;t upload paid review-center materials or textbooks without permission.</li>
+                      </ul>
+                      <label className="mt-3 flex items-start gap-2 font-medium">
+                        <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 h-4 w-4 accent-mira-blue" />
+                        I&apos;m allowed to share this, and it contains no patient information.
+                      </label>
                     </div>
-
-                    {visibility === "shared" && (
-                      <div className="rounded-xl bg-mira-blue-soft p-4 text-sm text-mira-blue-dark">
-                        <p className="font-medium">Before you share</p>
-                        <ul className="mt-1 list-disc space-y-1 pl-5">
-                          <li>Its contents will be used by Nurse Mira to answer questions from <strong>all students</strong>.</li>
-                          <li>Other students can&apos;t download the original file unless the administrator allows it.</li>
-                          <li>Never share patient information, personal assignments or case studies.</li>
-                          <li>Don&apos;t share paid review-center materials or textbooks without permission.</li>
-                        </ul>
-                        <label className="mt-3 flex items-start gap-2 font-medium">
-                          <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 h-4 w-4 accent-mira-blue" />
-                          I&apos;m allowed to share this, and it contains no patient information.
-                        </label>
-                      </div>
-                    )}
 
                     {/* Step 3–4: details */}
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -380,13 +354,7 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
                     </button>
                     {!ready && (
                       <p className="text-center text-xs text-mira-muted">
-                        {!visibility
-                          ? "Choose Shared reviewer or Private document."
-                          : !subjectId
-                            ? "Choose a subject."
-                            : visibility === "shared" && !rights
-                              ? "Tick the box to confirm you're allowed to share it."
-                              : "Add a title."}
+                        {!rights ? "Tick the box to confirm you're allowed to share it." : !subjectId ? "Choose a subject." : "Add a title."}
                       </p>
                     )}
                   </>

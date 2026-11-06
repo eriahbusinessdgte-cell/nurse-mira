@@ -306,7 +306,6 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <Badge tone={p.tone}>{p.label}</Badge>
-                  {d.visibility === "private" && <Badge tone="gray">Private</Badge>}
                   {d.status === "archived" && <Badge tone="yellow">Archived</Badge>}
                   {d.visibility === "shared" && !d.file_path && <Badge tone="gray">Text only</Badge>}
                   {d.visibility === "shared" && d.allow_download && d.file_path && <Badge tone="blue">Download allowed</Badge>}

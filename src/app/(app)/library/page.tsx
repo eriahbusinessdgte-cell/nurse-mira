@@ -12,7 +12,7 @@ export const metadata = { title: "My Library · Nurse Mira" };
 async function Library({ searchParams }: PageProps<"/library">) {
   const { supabase, profile } = await requireStudent();
   const params = await searchParams;
-  const tab = params.tab === "shared" ? "shared" : "mine";
+  const tab = params.tab === "mine" ? "mine" : "shared";
   const q = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
   const subject = typeof params.subject === "string" ? params.subject : "";
 
@@ -26,15 +26,15 @@ async function Library({ searchParams }: PageProps<"/library">) {
   const { data, error } = await query.returns<FullDoc[]>();
 
   const tabs = [
-    { key: "mine", label: "My uploads" },
     { key: "shared", label: "Shared library" },
+    { key: "mine", label: "My uploads" },
   ];
 
   return (
     <>
       <PageHeader
         title="My Library"
-        description="Upload reviewers to share with every Nurse Mira student, or keep private documents just for you."
+        description="One shared library for every Nurse Mira student. Check here before uploading — if a reviewer is already in, there's no need to add it again."
         action={<UploadDialog subjects={subjects} topics={topics} label="Upload document" />}
       />
 
@@ -79,8 +79,8 @@ async function Library({ searchParams }: PageProps<"/library">) {
 
         {tab === "shared" && (
           <p className="mb-3 rounded-lg bg-mira-blue-soft px-3 py-2 text-sm text-mira-blue-dark">
-            Nurse Mira learns from everything here, so the AI Tutor can use it to answer your questions. Original files can be
-            downloaded only when the administrator allows it.
+            Everything students upload goes here. Nurse Mira learns from all of it, so the AI Tutor can use it to answer your
+            questions. Original files can be downloaded only when the administrator allows it.
           </p>
         )}
 
@@ -98,8 +98,8 @@ async function Library({ searchParams }: PageProps<"/library">) {
               q || subject
                 ? "Try a different word or subject."
                 : tab === "mine"
-                  ? "Click Upload document to add a reviewer for everyone, or a private file just for you."
-                  : "When students upload shared reviewers, they appear here."
+                  ? "Click Upload document to add a reviewer to the shared library."
+                  : "When students upload reviewers, they appear here."
             }
           />
         )}

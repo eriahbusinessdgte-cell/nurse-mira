@@ -50,7 +50,11 @@ students can read but not change topics.
 
 Phase 3 checkpoint passed (6 Nov 2026): Erika added topics "Preeclampsia" and "eclampsia" to NCM 109 live.
 
-## Phase 4 progress (built, awaiting Erika's live test)
+## Phase 4 progress
+
+Update (6 Nov): one shared library — no private uploads; all students can browse it (D-027).
+Erika's live test: two reviewers uploaded as Test Student, both read and fully indexed (12 and 4 parts).
+
 
 - Upload: shared reviewer vs private document, sharing notice + permission tick box, file read in the browser
   (PDF incl. scanned pages, Word, PowerPoint, text, photos via OCR), suggested title/subject/topic,

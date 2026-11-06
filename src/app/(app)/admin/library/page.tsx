@@ -21,7 +21,6 @@ async function AdminLibrary({ searchParams }: PageProps<"/admin/library">) {
     semester: pick(p.semester),
     uploader: pick(p.uploader),
     status: pick(p.status) || "active",
-    visibility: pick(p.visibility) || "shared",
     processing: pick(p.processing),
   };
 
@@ -39,7 +38,6 @@ async function AdminLibrary({ searchParams }: PageProps<"/admin/library">) {
   if (f.semester) query = query.eq("semester", Number(f.semester));
   if (f.uploader) query = query.eq("uploader_id", f.uploader);
   if (f.status !== "all") query = query.eq("status", f.status);
-  if (f.visibility !== "all") query = query.eq("visibility", f.visibility);
   if (f.processing) query = query.eq("processing", f.processing);
   const { data, error } = await query.returns<FullDoc[]>();
   const docs = (data ?? []).map((d) => ({ ...d, uploader_name: d.uploader_id ? names.get(d.uploader_id) ?? null : null }));
@@ -55,7 +53,7 @@ async function AdminLibrary({ searchParams }: PageProps<"/admin/library">) {
     <>
       <PageHeader
         title="Shared Library"
-        description="Every reviewer here helps Nurse Mira answer all students. Archive old semesters, control downloads, and remove anything inappropriate."
+        description="Every upload from every student lands here and helps Nurse Mira answer all students. Archive old semesters, control downloads, and remove anything inappropriate."
         action={<UploadDialog subjects={subjects} topics={topics} label="Upload reviewer" />}
       />
 
@@ -111,11 +109,6 @@ async function AdminLibrary({ searchParams }: PageProps<"/admin/library">) {
             <option value="archived">Archived</option>
             <option value="all">Active and archived</option>
           </select>
-          <select name="visibility" defaultValue={f.visibility} aria-label="Type" className={select}>
-            <option value="shared">Shared reviewers</option>
-            <option value="private">Students&apos; private documents</option>
-            <option value="all">All documents</option>
-          </select>
           <select name="processing" defaultValue={f.processing} aria-label="Processing" className={select}>
             <option value="">Any processing status</option>
             <option value="ready">Ready</option>
@@ -126,12 +119,6 @@ async function AdminLibrary({ searchParams }: PageProps<"/admin/library">) {
             Apply filters
           </button>
         </form>
-
-        {f.visibility !== "shared" && (
-          <p className="mb-3 rounded-lg bg-mira-page px-3 py-2 text-sm text-mira-muted">
-            Students&apos; private documents show only their title and size, so you can manage storage. You can&apos;t open or read them.
-          </p>
-        )}
 
         {error ? (
           <p className="text-sm text-mira-danger">Couldn&apos;t load documents. Please refresh the page.</p>
