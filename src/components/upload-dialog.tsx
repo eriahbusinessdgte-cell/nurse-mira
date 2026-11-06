@@ -9,12 +9,13 @@ import { ACCEPT_ATTR, ACCEPTED, ExtractError, extractText, fileKind, sha256, typ
 import { formatBytes, SOURCE_TYPES } from "@/lib/library/labels";
 import { suggestMetadata, type SubjectLite, type TopicLite } from "@/lib/library/suggest";
 import { uploadDocument, type Step } from "@/lib/library/upload";
+import { maybeShrink } from "@/lib/library/shrink";
 import { totalChars } from "@/lib/library/chunk";
 import { SEM_LABEL, YEAR_LABEL } from "@/lib/nav";
 
 type Props = { subjects: SubjectLite[]; topics: TopicLite[]; label?: string };
 
-type Prepared = { file: File; kind: string; sha: string; extracted: Extracted; chars: number };
+type Prepared = { file: File; kind: string; sha: string; extracted: Extracted; chars: number; upload: File; uploadKind: string };
 
 export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
   const router = useRouter();
@@ -76,7 +77,9 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       const chars = totalChars(extracted.pages);
       if (chars < 100) {
         throw new ExtractError(
-          "Nurse Mira couldn't find readable text in this file, so it can't be added. If it's a photo or scan, make sure the text is clear and well lit, then try again.",
+          extracted.unreadablePages.length
+            ? "This file looks like photos of handwritten notes. Nurse Mira can't read handwriting yet — that's coming with the AI Tutor update. Please keep the file and upload it then."
+            : "Nurse Mira couldn't find readable text in this file, so it can't be added. If it's a photo or scan, make sure the text is clear and well lit, then try again.",
         );
       }
       const s = suggestMetadata(file.name, extracted.pages.map((p) => p.text).join("\n"), subjects, topics);
@@ -84,7 +87,15 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       setSubjectId(s.subject_id ?? "");
       setTopicId(s.topic_id ?? "");
       setSuggested({ subject: !!s.subject_id, topic: !!s.topic_id });
-      if (extracted.method === "ocr") setWarning("This file was read from pictures, so some words may be misread. Please check the title and subject.");
+      const notes: string[] = [];
+      if (extracted.unreadablePages.length) {
+        const list = extracted.unreadablePages.slice(0, 8).join(", ") + (extracted.unreadablePages.length > 8 ? "…" : "");
+        notes.push(
+          `${extracted.unreadablePages.length} photo page(s) (page ${list}) look handwritten or unclear, so Nurse Mira couldn't read them yet. You can still upload — handwriting reading arrives with the AI Tutor update, and these pages can be re-read then.`,
+        );
+      } else if (extracted.method !== "text") {
+        notes.push("Some pages were read from photos, so a few words may be misread. Please check the title and subject.");
+      }
 
       // Duplicates: is this exact file already in the shared library?
       const supabase = createClient();
@@ -98,7 +109,12 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
         return;
       }
 
-      setPrepared({ file, kind, sha, extracted, chars });
+      // Make photo-heavy files smaller before uploading (free, in the browser).
+      const smaller = await maybeShrink(file, kind, extracted.pageCount, extracted.imagePages, setReading);
+      if (smaller) notes.push(`Nurse Mira made a smaller copy to save storage: ${formatBytes(file.size)} → ${formatBytes(smaller.size)}. The smaller copy is the one stored.`);
+      setWarning(notes.length ? notes.join(" ") : null);
+
+      setPrepared({ file, kind, sha, extracted, chars, upload: smaller ?? file, uploadKind: smaller ? smaller.type : kind });
       setReading(null);
     } catch (e) {
       setReading(null);
@@ -114,8 +130,9 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
     try {
       await uploadDocument(
         {
-          file: prepared.file,
-          kind: prepared.kind,
+          file: prepared.upload,
+          originalName: prepared.file.name,
+          kind: prepared.uploadKind,
           sha256: prepared.sha,
           extracted: prepared.extracted,
           visibility: "shared",
@@ -214,7 +231,8 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
                       <span className="font-medium">{prepared.file.name}</span>
                       <span className="text-mira-muted">
                         {" "}
-                        · {formatBytes(prepared.file.size)} · {ACCEPTED[prepared.kind]}
+                        · {prepared.upload !== prepared.file ? `${formatBytes(prepared.file.size)} → ${formatBytes(prepared.upload.size)}` : formatBytes(prepared.file.size)} ·{" "}
+                        {ACCEPTED[prepared.kind]}
                         {prepared.extracted.pageCount ? ` · ${prepared.extracted.pageCount} pages` : ""}
                       </span>
                     </p>

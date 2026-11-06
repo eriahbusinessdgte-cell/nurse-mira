@@ -5,8 +5,9 @@ import { chunkPages, totalChars } from "./chunk";
 import type { Extracted } from "./extract";
 
 export type UploadInput = {
-  file: File;
-  kind: string; // mime type
+  file: File; // the file to store (may be a smaller copy)
+  originalName: string;
+  kind: string; // mime type of the stored file
   sha256: string;
   extracted: Extracted;
   visibility: "shared" | "private";
@@ -70,7 +71,7 @@ export async function uploadDocument(input: UploadInput, onStep: (s: Step) => vo
     .insert({
       uploader_id: user.id,
       title: input.title.trim().slice(0, 300),
-      original_filename: input.file.name.slice(0, 255),
+      original_filename: input.originalName.slice(0, 255),
       mime_type: input.kind,
       file_size: input.file.size,
       sha256: input.sha256,

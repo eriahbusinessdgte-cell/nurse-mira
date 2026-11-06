@@ -54,6 +54,8 @@ Phase 3 checkpoint passed (6 Nov 2026): Erika added topics "Preeclampsia" and "e
 
 Update (6 Nov): one shared library — no private uploads; all students can browse it (D-027).
 Erika's live test: two reviewers uploaded as Test Student, both read and fully indexed (12 and 4 parts).
+Pharmacology-01 Notes (15 MB) is photographed handwriting — only a little text could be read. Added automatic
+shrinking of photo-heavy files (D-028) and page-by-page photo detection (D-029). Handwriting reading → Phase 5.
 
 
 - Upload: shared reviewer vs private document, sharing notice + permission tick box, file read in the browser

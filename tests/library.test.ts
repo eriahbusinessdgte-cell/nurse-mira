@@ -60,3 +60,27 @@ test("no confident match leaves fields empty", () => {
   assert.equal(s.subject_id, null);
   assert.equal(s.topic_id, null);
 });
+
+import { renderScale, shouldShrinkImage, shouldShrinkPdf, worthKeeping } from "../src/lib/library/shrink-rules.ts";
+
+const MB = 1024 * 1024;
+test("shrinks only large, photo-heavy PDFs", () => {
+  assert.equal(shouldShrinkPdf(15 * MB, 20, 18), true); // the Pharmacology notes case
+  assert.equal(shouldShrinkPdf(15 * MB, 20, 2), false); // mostly typed
+  assert.equal(shouldShrinkPdf(3 * MB, 20, 20), false); // already small
+  assert.equal(shouldShrinkPdf(15 * MB, null, 0), false);
+});
+test("images over 2 MB are shrunk", () => {
+  assert.equal(shouldShrinkImage(3 * MB), true);
+  assert.equal(shouldShrinkImage(1 * MB), false);
+});
+test("keeps the smaller copy only when it saves at least 15%", () => {
+  assert.equal(worthKeeping(15 * MB, 3 * MB), true);
+  assert.equal(worthKeeping(10 * MB, 9 * MB), false);
+  assert.equal(worthKeeping(10 * MB, 0), false);
+});
+test("render scale caps the longest side and never exceeds 2x", () => {
+  assert.equal(renderScale(1191, 1684), 1700 / 1684); // large page: limited by the 1700 px target
+  assert.equal(renderScale(595, 842), 2); // A4: 2x is enough
+  assert.equal(renderScale(300, 400), 2);
+});
