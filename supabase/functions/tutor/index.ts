@@ -86,14 +86,15 @@ Deno.serve(async (req) => {
 
   // 2. Daily limit (the admin isn't limited).
   const day = manilaDay();
-  const { data: limitRow } = await db.from("app_settings").select("value").eq("key", "daily_answer_limit").maybeSingle();
-  const limit = Number(limitRow?.value ?? 10) || 10;
+  // Fair share: the app's daily AI allowance divided by the number of active students.
+  const { data: limitValue } = await db.rpc("student_daily_limit");
+  const limit = Number(limitValue ?? 10) || 10;
   const { data: usage } = await db.from("ai_usage").select("answers").eq("student_id", me.id).eq("day", day).maybeSingle();
   const used = usage?.answers ?? 0;
   if (me.role !== "admin" && used >= limit) {
     return json(origin, 200, {
       kind: "limit",
-      error: `You've used all ${limit} of today's AI Tutor answers. They reset at midnight (Philippine time). Your saved conversations, library and everything else still work.`,
+      error: `You've used all ${limit} of today's AI Tutor answers. They reset at midnight (Philippine time). (The free AI allowance is shared equally by all students.) Your saved conversations, library and everything else still work.`,
       remaining: 0,
     });
   }

@@ -53,13 +53,13 @@ async function Overview() {
       .order("created_at", { ascending: false })
       .limit(8),
     supabase.from("ai_usage").select("student_id, answers, day").gte("day", manilaDay(6)),
-    supabase.from("app_settings").select("value").eq("key", "daily_answer_limit").maybeSingle(),
+    supabase.rpc("student_daily_limit"),
   ]);
   const usageRows = (usage.data ?? []) as { student_id: string; answers: number; day: string }[];
   const answersToday = usageRows.filter((r) => r.day === today).reduce((n, r) => n + r.answers, 0);
   const answersWeek = usageRows.reduce((n, r) => n + r.answers, 0);
   const studentsToday = new Set(usageRows.filter((r) => r.day === today).map((r) => r.student_id)).size;
-  const dailyLimit = Number(limitRow.data?.value ?? 10);
+  const dailyLimit = Number(limitRow.data ?? 10);
 
   const stats = [
     { label: "Active students", value: active.count ?? 0 },
@@ -108,8 +108,8 @@ async function Overview() {
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold">AI Tutor use</h2>
           <p className="text-sm text-mira-muted">
-            {answersToday} answer{answersToday === 1 ? "" : "s"} today from {studentsToday} student{studentsToday === 1 ? "" : "s"} · {answersWeek} in the last 7 days · limit{" "}
-            {dailyLimit} per student per day. Only counts are shown — students&apos; conversations stay private.
+            {answersToday} answer{answersToday === 1 ? "" : "s"} today from {studentsToday} student{studentsToday === 1 ? "" : "s"} · {answersWeek} in the last 7 days · each student can ask{" "}
+            {dailyLimit} a day right now (70 shared equally among {active.count ?? 0} active student{active.count === 1 ? "" : "s"}). Only counts are shown — students&apos; conversations stay private.
           </p>
         </div>
       </Card>
