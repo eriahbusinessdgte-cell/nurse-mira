@@ -48,7 +48,7 @@ export function InviteStudent({ defaultOpen = false }: { defaultOpen?: boolean }
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="invite-title">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <h2 id="invite-title" className="text-lg font-semibold">
                 {result ? "Invitation ready" : "Invite a student"}

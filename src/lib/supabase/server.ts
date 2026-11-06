@@ -43,9 +43,10 @@ export type Profile = {
  */
 export async function requireProfile(role?: Profile["role"]) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verifies the signed login token locally (fast); the profile check below still
+  // confirms the account exists and is turned on.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? { id: data.claims.sub as string } : null;
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase

@@ -118,9 +118,9 @@ export function AppShell(props: Props) {
   const initial = props.personName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className="flex min-h-screen flex-1">
+    <div className="flex min-h-dvh flex-1">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block">
         <Sidebar {...props} />
       </aside>
 
@@ -142,7 +142,7 @@ export function AppShell(props: Props) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-mira-line bg-mira-page/90 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-mira-line bg-mira-page/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur sm:px-6">
           <button
             onClick={() => setOpen(true)}
             aria-label="Open menu"

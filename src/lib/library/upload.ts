@@ -56,9 +56,7 @@ export async function runIndexing(documentId: string, onStep: (s: Step) => void)
 
 export async function uploadDocument(input: UploadInput, onStep: (s: Step) => void): Promise<string> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = (await supabase.auth.getSession()).data.session?.user;
   if (!user) throw new Error("Please sign in again.");
 
   const chunks = chunkPages(input.extracted.pages);

@@ -157,18 +157,14 @@ export function CarePlans({ plans: initialPlans, cases, initialGroup, remaining:
   async function addBlank() {
     const caseId = group !== "all" && group !== "none" ? group : null;
     const pos = Math.max(-1, ...plans.filter((p) => p.case_study_id === caseId).map((p) => p.position)) + 1;
-    const {
-      data: { user },
-    } = await createClient().auth.getUser();
+    const user = (await createClient().auth.getSession()).data.session?.user;
     const { data } = await createClient().from("care_plans").insert({ student_id: user?.id, case_study_id: caseId, position: pos, plan: emptyPlan() }).select("id").single();
     if (data) await reload([data.id as string]);
   }
 
   async function duplicate(p: PlanRow) {
     const pos = Math.max(...plans.filter((x) => x.case_study_id === p.case_study_id).map((x) => x.position)) + 1;
-    const {
-      data: { user },
-    } = await createClient().auth.getUser();
+    const user = (await createClient().auth.getSession()).data.session?.user;
     const { data } = await createClient()
       .from("care_plans")
       .insert({ student_id: user?.id, case_study_id: p.case_study_id, position: pos, plan: { ...p.plan, diagnosis: `${p.plan.diagnosis} (copy)` } })

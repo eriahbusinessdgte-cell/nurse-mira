@@ -52,3 +52,17 @@ body {
 .prose-mira th { background: var(--mira-page); }
 .prose-mira code { background: var(--mira-page); padding: 0 0.25rem; border-radius: 4px; }
 .prose-mira hr { border-color: var(--mira-line); }
+
+/* Phones: keep content clear of notches and rounded corners (portrait and landscape). */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* Stop iOS from zooming in when tapping a text box (inputs under 16px trigger it). */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

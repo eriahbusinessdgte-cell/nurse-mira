@@ -352,7 +352,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   );
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-65px)] sm:-m-6">
+    <div className="-m-4 flex h-[calc(100dvh-65px)] sm:-m-6">
       {/* History (desktop) */}
       <aside className="hidden w-72 shrink-0 border-r border-mira-line bg-white p-4 lg:block">{historyPanel}</aside>
 
@@ -371,7 +371,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
 
       <section className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-mira-line bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-mira-line bg-white px-4 py-3 [@media(max-height:500px)]:py-1.5">
           <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg p-2 text-mira-muted hover:bg-mira-page lg:hidden" aria-label="Saved conversations">
             <History size={18} />
           </button>
@@ -457,7 +457,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto bg-mira-page px-4 py-6">
+        <div className="flex-1 overflow-y-auto bg-mira-page px-4 py-6 [@media(max-height:500px)]:py-3">
           <div className="mx-auto max-w-3xl space-y-5">
             {messages.length === 0 && (
               <div className="py-6 text-center">
@@ -506,7 +506,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
         </div>
 
         {/* Composer */}
-        <div className="border-t border-mira-line bg-white px-4 py-3">
+        <div className="border-t border-mira-line bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:500px)]:py-1.5">
           <div className="mx-auto max-w-3xl">
             {banner && (
               <div
@@ -564,7 +564,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                 <SendHorizontal size={19} />
               </button>
             </form>
-            <p className="mt-1.5 text-center text-[11px] text-mira-muted">
+            <p className="mt-1.5 text-center text-[11px] text-mira-muted [@media(max-height:500px)]:hidden">
               For learning only — not a substitute for your clinical instructor. Never type real patient names or details.
               {listening && " Listening… (your browser may send speech to its own service to turn it into text)."}
             </p>

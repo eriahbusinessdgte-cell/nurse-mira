@@ -68,7 +68,7 @@ function Editor({
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={d.id ? "Edit task" : "New task"}>
       <form
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
+        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
         onSubmit={async (e) => {
           e.preventDefault();
           if (!d.title.trim()) return setError("Please give the task a title.");
@@ -210,9 +210,7 @@ export function Planner({ items: initial, subjects, mySubjectIds, cases, today }
       if (error || !data) return "The task couldn't be saved. Please try again.";
       setItems((l) => l.map((i) => (i.id === d.id ? (data as Item) : i)));
     } else {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = (await supabase.auth.getSession()).data.session?.user;
       const { data, error } = await supabase.from("planner_items").insert({ ...row, student_id: user?.id }).select("*").single();
       if (error || !data) return "The task couldn't be saved. Please try again.";
       setItems((l) => [...l, data as Item]);

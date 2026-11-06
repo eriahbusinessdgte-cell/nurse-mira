@@ -150,9 +150,7 @@ export function QuizTaker({ quiz, attempts: initialAttempts }: { quiz: Quiz; att
       setStage("done");
       window.scrollTo({ top: 0 });
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = (await supabase.auth.getSession()).data.session?.user;
       const { data, error } = await supabase
         .from("quiz_attempts")
         .insert({

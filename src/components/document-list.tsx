@@ -150,7 +150,7 @@ function DeleteDialog({ docs, subjects, onClose }: { docs: DocRow[]; subjects: S
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Delete permanently">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-mira-danger">Delete permanently?</h2>
         <div className="mt-3 space-y-3 text-sm">
           <div>

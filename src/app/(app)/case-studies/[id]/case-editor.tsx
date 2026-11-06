@@ -397,7 +397,7 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
 
       {templateOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Use my school's format">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
             <div className="mb-3 flex items-center">
               <h2 className="flex-1 text-lg font-semibold">Use my school&apos;s format</h2>
               <button type="button" onClick={() => setTemplateOpen(false)} aria-label="Close" className="rounded p-1 text-mira-muted">
