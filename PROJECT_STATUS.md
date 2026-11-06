@@ -45,4 +45,7 @@ Still to do in Phase 3: curriculum editing (subjects and topics).
 
 ## Known problems
 
+- Fixed: the first live invite failed ("Database error creating new user") because the sign-up guard checked a mark Supabase adds only after creating the account. The guard now checks a server-only invitation list.
+
+
 - Vercel's first build failed because a test file was included in the app's type check. Fixed the same day; tests now run separately (`npm test`).

@@ -79,6 +79,12 @@ Deno.serve(async (req) => {
         if (!EMAIL_RE.test(email)) return fail(origin, 400, "Please enter a valid email address.");
         if (!fullName) return fail(origin, 400, "Please enter the student's name.");
 
+        // Put the email on the guest list the database checks before allowing a new account.
+        const { error: inviteError } = await admin
+          .from("pending_invites")
+          .upsert({ email, created_at: new Date().toISOString() });
+        if (inviteError) return fail(origin, 500, "Could not prepare the invitation. Please try again.");
+
         const { data: created, error } = await admin.auth.admin.createUser({
           email,
           email_confirm: true,
@@ -86,6 +92,7 @@ Deno.serve(async (req) => {
           user_metadata: { full_name: fullName },
         });
         if (error) {
+          await admin.from("pending_invites").delete().eq("email", email);
           const msg = error.message.toLowerCase().includes("already")
             ? "A Nurse Mira account already uses this email. Find the student in the list and create a new setup link instead."
             : `Could not create the account: ${error.message}`;
