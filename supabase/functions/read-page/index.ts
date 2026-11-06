@@ -4,7 +4,7 @@
 //
 // The browser sends one page at a time while a student uploads (or re-reads) a reviewer.
 // Cloudflare's free allowance is 10,000 "neurons" a day (resets 00:00 UTC). Reading pages may use
-// up to PAGE_BUDGET of it so the AI Tutor backup always keeps some.
+// up to the page-reading budget (Settings, default 6,500) of it so the AI Tutor backup always keeps some.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -14,7 +14,7 @@ const CF_ACCOUNT = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")?.trim() ?? "";
 const CF_TOKEN = Deno.env.get("CLOUDFLARE_API_TOKEN")?.trim() ?? "";
 
 const MODELS = ["@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/meta/llama-4-scout-17b-16e-instruct"];
-const PAGE_BUDGET = 6500; // neurons per day for reading pages (about 80 pages)
+const DEFAULT_PAGE_BUDGET = 6500; // neurons per day for reading pages (about 80 pages); admin can change it in Settings
 const MAX_IMAGE_CHARS = 3_000_000; // ~2.2 MB JPEG
 
 const PROMPT = `This is a photo or scan of a page of nursing study notes (handwritten or printed).
@@ -58,8 +58,13 @@ Deno.serve(async (req) => {
   if (image.length > MAX_IMAGE_CHARS) return json(origin, 400, { error: "The page picture is too large.", kind: "invalid" });
 
   // Free allowance check (pages share Cloudflare's daily allowance with the tutor backup).
-  const { data: usage } = await db.from("cloudflare_usage").select("neurons").eq("day", utcDay()).maybeSingle();
-  if (Number(usage?.neurons ?? 0) >= PAGE_BUDGET) {
+  const [{ data: usage }, { data: budgetRow }] = await Promise.all([
+    db.from("cloudflare_usage").select("neurons").eq("day", utcDay()).maybeSingle(),
+    db.from("app_settings").select("value").eq("key", "page_reading_budget").maybeSingle(),
+  ]);
+  const setBudget = Number(budgetRow?.value);
+  const pageBudget = Number.isFinite(setBudget) ? Math.min(9500, Math.max(0, setBudget)) : DEFAULT_PAGE_BUDGET;
+  if (Number(usage?.neurons ?? 0) >= pageBudget) {
     return json(origin, 200, {
       kind: "budget",
       error: "Today's free handwriting reading is used up. It resets at 8:00 AM Philippine time — you can press \"Read again\" on the document then.",

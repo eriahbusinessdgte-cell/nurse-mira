@@ -22,6 +22,7 @@ const ACTION_TEXT: Record<string, string> = {
 const BACKUP_TEXT: Record<string, string> = {
   "backup.downloaded": "downloaded a backup",
   "backup.restored": "put back missing records from a backup",
+  "settings.updated": "changed the app settings",
 };
 
 const CURRICULUM_TEXT: Record<string, string> = {
@@ -157,7 +158,7 @@ async function Overview() {
           <ul className="divide-y divide-mira-line text-sm">
             {items.map((a) => (
               <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2.5">
-                {a.action.startsWith("backup.") ? (
+                {a.action.startsWith("backup.") || a.action.startsWith("settings.") ? (
                   <span>You {BACKUP_TEXT[a.action] ?? a.action}</span>
                 ) : a.action.startsWith("curriculum.") ? (
                   <span>

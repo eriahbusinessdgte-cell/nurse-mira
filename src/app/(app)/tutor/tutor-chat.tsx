@@ -55,6 +55,7 @@ type Props = {
   limit: number;
   studentName: string;
   initialQuestion: string;
+  defaultMode: "tea" | "clinical";
 };
 
 // Minimal types for the browser's speech recognition (not in TypeScript's built-in types everywhere).
@@ -133,13 +134,13 @@ function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking
   );
 }
 
-export function TutorChat({ conversations, active, initialMessages, subjects, remaining: initialRemaining, limit, studentName, initialQuestion }: Props) {
+export function TutorChat({ conversations, active, initialMessages, subjects, remaining: initialRemaining, limit, studentName, initialQuestion, defaultMode }: Props) {
   const router = useRouter();
   const [list, setList] = useState(conversations);
   const [conversationId, setConversationId] = useState<string | null>(active?.id ?? null);
   const [title, setTitle] = useState(active?.title ?? "New conversation");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [mode, setMode] = useState<"tea" | "clinical">(active?.mode ?? "tea");
+  const [mode, setMode] = useState<"tea" | "clinical">(active?.mode ?? defaultMode);
   const [subjectId, setSubjectId] = useState<string>(active?.subject_id ?? "");
   const [input, setInput] = useState(initialQuestion);
   const [sending, setSending] = useState(false);

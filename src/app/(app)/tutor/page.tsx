@@ -13,11 +13,12 @@ async function Tutor({ searchParams }: PageProps<"/tutor">) {
   const requested = typeof params.c === "string" ? params.c : null;
   const ask = typeof params.ask === "string" ? params.ask.slice(0, 500) : "";
 
-  const [{ data: conversations }, { data: mySubjects }, { data: limitRow }, { data: usage }] = await Promise.all([
+  const [{ data: conversations }, { data: mySubjects }, { data: limitRow }, { data: usage }, { data: modeRow }] = await Promise.all([
     supabase.from("conversations").select("id, title, mode, subject_id, last_message_at, summary, next_step").order("last_message_at", { ascending: false }).limit(50),
     supabase.from("student_subjects").select("subjects(id, code, title, sort_order)").eq("student_id", profile.id),
     supabase.rpc("student_daily_limit"),
     supabase.from("ai_usage").select("answers").eq("student_id", profile.id).eq("day", manilaDay()).maybeSingle(),
+    supabase.from("app_settings").select("value").eq("key", "default_tutor_mode").maybeSingle(),
   ]);
 
   const list = (conversations ?? []) as ConversationItem[];
@@ -49,6 +50,7 @@ async function Tutor({ searchParams }: PageProps<"/tutor">) {
       limit={limit}
       studentName={(profile.preferred_name || profile.full_name).split(" ")[0]}
       initialQuestion={ask}
+      defaultMode={modeRow?.value === "clinical" ? "clinical" : "tea"}
     />
   );
 }
