@@ -2,7 +2,7 @@
 
 _Last updated: 6 November 2026 (Philippine time)_
 
-**Current phase:** Phase 2 — Setup
+**Current phase:** Phase 3 — Foundation (Phase 2 complete ✅)
 
 ## Done
 
@@ -26,12 +26,14 @@ _Last updated: 6 November 2026 (Philippine time)_
 | 26 subjects loaded, correct years and semesters | ✅ |
 | Greeting: morning/afternoon/evening, "Nurse" added once, admin without "Nurse" | ✅ |
 | App type-check, lint and production build | ✅ |
+| Live site at nurse-mira.vercel.app; signed-out visitors go to the sign-in page | ✅ |
+| Test 1: administrator login on the live site (eriah.businessdgte@gmail.com has the admin role) | ✅ |
 
-## Next
+## Next (Phase 3)
 
-1. Vercel project connected to the repository (Erika — SETUP_GUIDE step 3).
-2. Erika creates her admin login (SETUP_GUIDE step 4) and signs in on the live site (test 1).
+Design system and sidebar, admin Students page (invite links, edit, deactivate/reactivate, reset links),
+Curriculum page, 5-step student onboarding, student dashboard, global search.
 
 ## Known problems
 
-None.
+- Vercel's first build failed because a test file was included in the app's type check. Fixed the same day; tests now run separately (`npm test`).
