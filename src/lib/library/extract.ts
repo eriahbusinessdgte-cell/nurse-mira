@@ -289,7 +289,7 @@ async function readPptx(file: File): Promise<Extracted> {
 export async function extractText(file: File, onProgress: Progress = () => {}): Promise<Extracted> {
   const kind = fileKind(file);
   if (!kind) throw new ExtractError("This type of file isn't supported. Please upload a PDF, Word (.docx), PowerPoint (.pptx), text file, or a JPG/PNG photo.");
-  if (file.size > MAX_BYTES) throw new ExtractError("This file is larger than 25 MB. Please compress it or split it into smaller files.");
+  if (file.size > MAX_BYTES) throw new ExtractError("This file is larger than 25 MB. Please compress it or split it into smaller files. (Adding a whole open textbook? The admin can use “Add textbook” in the Shared Library.)");
   if (file.size === 0) throw new ExtractError("This file is empty.");
 
   onProgress("Reading the file…");
