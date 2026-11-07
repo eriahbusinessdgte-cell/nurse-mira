@@ -25,6 +25,14 @@ export function isSafetyTopic(text: string): boolean {
   return SAFETY_TERMS.some((w) => t.includes(w));
 }
 
+/**
+ * Does the student ask about their own past study? Only then are past-session summaries shown
+ * to the AI — otherwise an old summary could be repeated as if it were a fact (Phase 8 finding).
+ */
+export function asksAboutPastStudy(text: string): boolean {
+  return /\b(where (did )?we (leave|left|stop|stopped)|left off|last time|last session|previous(ly)? (session|chat|lesson|topic)|what (did|have) (i|we) (study|studied|learn|learned|learnt|cover|covered|discuss|discussed)|continue (studying|where|from)|recap (of )?(my|our)|my (study )?history|what should i study next|study next)\b/i.test(text);
+}
+
 export function systemPrompt(opts: {
   mode: "tea" | "clinical";
   safety: boolean;
@@ -51,7 +59,7 @@ export function systemPrompt(opts: {
             `<source id="S${s.n}" title="${s.title.replace(/"/g, "'")}"${s.page ? ` page="${s.page}"` : ""} type="${SOURCE_LABEL[s.source_type] ?? s.source_type}"${s.status === "archived" ? ' archived="yes"' : ""}>\n${s.content}\n</source>`,
         )
         .join("\n\n")
-    : "(NO MATCHING MATERIAL. The Nurse Mira library has nothing on this question yet. Begin your answer with one short line saying so — e.g. \"This topic isn't in the Nurse Mira library yet, so this is from general nursing knowledge:\" — then answer carefully. If the question names a term, mnemonic or "check" you don't recognise as established nursing knowledge, say you don't recognise it instead of guessing.)";
+    : "(NO MATCHING MATERIAL. The Nurse Mira library has nothing on this question yet. Begin your answer with one short line saying so — e.g. \"This topic isn't in the Nurse Mira library yet, so this is from general nursing knowledge:\" — then answer carefully from well-established nursing knowledge only. IMPORTANT: if the question asks about a specific named term, mnemonic, acronym, check, scale or protocol that is not a widely published, standard nursing or medical term you are certain about, do NOT explain it, do NOT build a mnemonic from its letters, and do NOT use the study history to explain it. Instead say you don't recognise it (it may come from a specific school, instructor, review center or hospital, or be misspelled), ask where they saw it, and offer to explain the closest standard topic.)";
 
   return `You are Nurse Mira, an AI study tutor for Filipino nursing students. You help students UNDERSTAND nursing concepts accurately. You are an educational tool, not a nurse, doctor or clinical decision-maker.
 
@@ -74,7 +82,7 @@ HOW TO ANSWER
 - If the student shares real names or identifying patient details, gently remind them to remove identifying information.
 - If the student seems to be in crisis or mentions self-harm, respond with care, encourage them to reach out to someone they trust or local emergency services (in the Philippines, the NCMH Crisis Hotline is 1553), and do not continue tutoring on that topic.
 
-STUDY HISTORY (from Nurse Mira's saved records — use it when the student asks what they studied before or "where did we leave off")
+STUDY HISTORY (from Nurse Mira's saved records — use it ONLY when the student asks what they studied before or "where did we leave off". It is NOT a source of facts: never use it to explain or define anything, because the material it came from may since have been deleted or been wrong.)
 ${opts.history || "(No earlier study sessions yet.)"}
 
 LIBRARY SOURCES
@@ -85,5 +93,5 @@ ${sourceBlock}`;
 
 export function summaryPrompt(): string {
   return `You summarize a nursing student's tutoring conversation for their study history. Reply ONLY with JSON:
-{"summary": "<2 short sentences: what was studied and what the student found difficult>", "next_step": "<one specific next topic or activity>", "topics": ["<up to 4 short topic names>"]}`;
+{"summary": "<2 short sentences naming the TOPICS studied and what the student found difficult — topic names only, never definitions, steps, numbers or other facts>", "next_step": "<one specific next topic or activity>", "topics": ["<up to 4 short topic names>"]}`;
 }

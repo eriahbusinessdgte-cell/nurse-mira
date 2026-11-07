@@ -9,7 +9,7 @@
 // then Groq's smaller model → save both messages →
 // keep a short study summary for "Continue Studying".
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { isSafetyTopic, summaryPrompt, systemPrompt, type Source } from "./prompt.ts";
+import { asksAboutPastStudy, isSafetyTopic, summaryPrompt, systemPrompt, type Source } from "./prompt.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -202,7 +202,8 @@ Deno.serve(async (req) => {
     studentName: (me.preferred_name || me.full_name || "").split(" ")[0],
     yearLevel: me.year_level ? YEAR[me.year_level] : "nursing student",
     subject: subjectName,
-    history,
+    // Past-session summaries only when the student asks about their own past study.
+    history: asksAboutPastStudy(question) ? history : "",
     sources,
   });
   const chat: ChatMessage[] = [{ role: "system", content: system }, ...recent, { role: "user", content: question }];
