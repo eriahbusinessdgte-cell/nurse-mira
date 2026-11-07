@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   const { data: me } = await admin.from("profiles").select("role, is_active").eq("id", who.user.id).single();
   if (!me?.is_active) return json(origin, 403, { error: "Your account is turned off." });
 
-  let body: { action?: string; document_id?: string; text?: string; from_index?: number; to_index?: number };
+  let body: { action?: string; document_id?: string; text?: string; from_index?: number; to_index?: number; batch?: number };
   try {
     body = await req.json();
   } catch {
@@ -68,7 +68,9 @@ Deno.serve(async (req) => {
       let q = admin.from("document_chunks").select("id, content").eq("document_id", id).is("embedding", null);
       if (from !== null) q = q.gte("chunk_index", from);
       if (to !== null) q = q.lt("chunk_index", to);
-      const { data: batch, error } = await q.order("chunk_index").limit(BATCH);
+      // The browser asks for smaller batches after a "too busy" (heavy pages), down to 1.
+      const size = Number.isInteger(body.batch) ? Math.min(BATCH, Math.max(1, Number(body.batch))) : BATCH;
+      const { data: batch, error } = await q.order("chunk_index").limit(size);
       if (error) throw error;
 
       for (const chunk of batch ?? []) {

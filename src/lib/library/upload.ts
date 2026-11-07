@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { problemKind, reportProblem } from "@/lib/report-problem";
 import { chunkPages, totalChars, type Page } from "./chunk";
+import { isReferenceChunk } from "./textbook";
 import type { Extracted } from "./extract";
 
 export type UploadInput = {
@@ -50,13 +51,17 @@ export async function runIndexing(documentId: string, onStep: (s: Step) => void,
   let lastRemaining = total;
 
   const lane = async (from: number | null, to: number | null) => {
-    for (let attempt = 0, failures = 0; attempt < 3000; attempt++) {
+    let batch = 6; // pieces per call; shrinks after a failure (heavy pages), grows back slowly
+    let streak = 0;
+    for (let attempt = 0, failures = 0; attempt < 6000; attempt++) {
       const { data, error } = await supabase.functions.invoke<{ remaining: number; total: number; lane_remaining: number | null }>("embed", {
-        body: { action: "document", document_id: documentId, ...(from !== null ? { from_index: from, to_index: to } : {}) },
+        body: { action: "document", document_id: documentId, batch, ...(from !== null ? { from_index: from, to_index: to } : {}) },
       });
       if (error || !data) {
         // The free plan sometimes says "too busy" for a moment: wait longer each time, then give up.
         failures++;
+        streak = 0;
+        batch = Math.max(1, Math.floor(batch / 2));
         if (failures >= 8) {
           const message = await functionError(error);
           reportProblem("embed", problemKind(null, true), message);
@@ -67,6 +72,10 @@ export async function runIndexing(documentId: string, onStep: (s: Step) => void,
         continue;
       }
       failures = 0;
+      if (++streak >= 10 && batch < 6) {
+        batch++;
+        streak = 0;
+      }
       lastRemaining = Math.min(lastRemaining, data.remaining);
       onStep({ label: "Adding it to Nurse Mira's library", done: data.total - lastRemaining, total: data.total });
       if ((data.lane_remaining ?? data.remaining) === 0) return;
@@ -303,7 +312,10 @@ export async function importTextbook(
   if (Array.isArray(dup) && dup.length) throw new Error(`This book is already in the library as “${dup[0].title}”.`);
 
   const { pages, pageCount, skipped } = await preparePages(input.file, (m) => onStep({ label: m }));
-  const chunks = chunkPages(pages);
+  // Leave out reference lists (web addresses only), then number the pieces again.
+  const chunks = chunkPages(pages)
+    .filter((c) => !isReferenceChunk(c.content))
+    .map((c, i) => ({ ...c, chunk_index: i }));
   if (chunks.length < 20) throw new Error("Very little typed text was found. This import is for textbooks with selectable text, not scans.");
 
   onStep({ label: "Saving details" });

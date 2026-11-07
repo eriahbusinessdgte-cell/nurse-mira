@@ -44,3 +44,13 @@ export function prepareTextbookPages(pages: Page[]): { pages: Page[]; skipped: n
   const kept = cleaned.filter((p) => p.text.trim().length >= 80 && !looksLikeIndexPage(p.text));
   return { pages: kept, skipped: pages.length - kept.length };
 }
+
+/**
+ * Reference-list pieces ("DailyMed. (Updated …). https://…setid=08decdf3-…") teach nothing and are
+ * slow to index (long codes become many tokens — they hit the free plan's 2-second limit).
+ */
+export function isReferenceChunk(text: string): boolean {
+  const urls = text.match(/https?:\/\/\S+/g) ?? [];
+  const urlChars = urls.reduce((n, u) => n + u.length, 0);
+  return urls.length >= 4 || urlChars / Math.max(1, text.length) >= 0.15;
+}

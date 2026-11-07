@@ -33,3 +33,11 @@ test("prepare keeps teaching pages and counts what was skipped", () => {
   assert.equal(r.pages.length, 20);
   assert.equal(r.skipped, 2);
 });
+
+import { isReferenceChunk } from "../src/lib/library/textbook.ts";
+test("reference lists are recognised, normal text with one link is kept", () => {
+  const refs = "DailyMed. (Updated June 2023). Linezolid injection. https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=08decdf3-a397-42e7-8ac3-e489c0cc7085 DailyMed. (Updated May 2022). Oseltamivir capsule. https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=80beab2c-396e-4a37-a4dc-40fdb62859cf";
+  assert.equal(isReferenceChunk(refs), true);
+  const normal = "Vancomycin is a glycopeptide antibiotic used for serious gram-positive infections. Monitor trough levels, renal function and hearing. The nurse infuses it slowly over at least 60 minutes to prevent infusion reactions (red man syndrome). Teach the client to report ringing in the ears. More information: https://www.cdc.gov".repeat(2);
+  assert.equal(isReferenceChunk(normal), false);
+});
