@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { DocumentList } from "@/components/document-list";
 import { PageLoading } from "@/components/page-loading";
+import { TextbookDialog } from "@/components/textbook-dialog";
 import { UploadDialog } from "@/components/upload-dialog";
 import { Card, PageHeader } from "@/components/ui";
 import { DOC_COLUMNS, loadCurriculum, type FullDoc } from "@/lib/library/data";
@@ -54,7 +55,12 @@ async function AdminLibrary({ searchParams }: PageProps<"/admin/library">) {
       <PageHeader
         title="Shared Library"
         description="Every upload from every student lands here and helps Nurse Mira answer all students. Archive old semesters, control downloads, and remove anything inappropriate."
-        action={<UploadDialog subjects={subjects} topics={topics} label="Upload reviewer" />}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <TextbookDialog />
+            <UploadDialog subjects={subjects} topics={topics} label="Upload reviewer" />
+          </div>
+        }
       />
 
       {duplicates.length > 0 && (

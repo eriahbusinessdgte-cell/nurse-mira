@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { problemKind, reportProblem } from "@/lib/report-problem";
-import { chunkPages, totalChars } from "./chunk";
+import { chunkPages, totalChars, type Page } from "./chunk";
 import type { Extracted } from "./extract";
 
 export type UploadInput = {
@@ -263,4 +263,76 @@ export async function replaceWithTypedCopy(
   });
   if (fnError || !data || data.error) throw new Error(data?.error ?? (await functionError(fnError)));
   return { before: data.before, after: data.after };
+}
+
+export type TextbookInput = { file: File; title: string; author: string; license: string; sha256: string };
+export type TextbookResult = { id: string; pages: number; skipped: number; pieces: number };
+
+/**
+ * Admin only: adds a large openly licensed textbook as TEXT ONLY (the PDF itself isn't stored —
+ * it would use most of the free storage). Page numbers are kept so answers can cite them.
+ */
+export async function importTextbook(
+  input: TextbookInput,
+  onStep: (s: Step) => void,
+  preparePages: (file: File, onProgress: (m: string) => void) => Promise<{ pages: Page[]; pageCount: number; skipped: number }>,
+): Promise<TextbookResult> {
+  const supabase = createClient();
+  const user = (await supabase.auth.getSession()).data.session?.user;
+  if (!user) throw new Error("Please sign in again.");
+
+  const { data: dup } = await supabase.rpc("find_shared_duplicate", { p_sha256: input.sha256 });
+  if (Array.isArray(dup) && dup.length) throw new Error(`This book is already in the library as “${dup[0].title}”.`);
+
+  const { pages, pageCount, skipped } = await preparePages(input.file, (m) => onStep({ label: m }));
+  const chunks = chunkPages(pages);
+  if (chunks.length < 20) throw new Error("Very little typed text was found. This import is for textbooks with selectable text, not scans.");
+
+  onStep({ label: "Saving details" });
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .insert({
+      uploader_id: user.id,
+      title: input.title.trim().slice(0, 300),
+      original_filename: input.file.name.slice(0, 255),
+      mime_type: "application/pdf",
+      file_size: 0,
+      sha256: input.sha256,
+      visibility: "shared",
+      source_type: "textbook",
+      author: `${input.author.trim()}${input.license.trim() ? ` · ${input.license.trim()}` : ""}`.slice(0, 200),
+      rights_confirmed: true,
+      allow_download: false,
+      page_count: pageCount,
+      text_chars: totalChars(pages),
+      unreadable_pages: [],
+      processing: "processing",
+    })
+    .select("id")
+    .single();
+  if (error || !doc) throw new Error("Couldn't save the book's details. Please try again.");
+  const id = doc.id as string;
+
+  const fail = async (message: string) => {
+    await supabase.from("documents").update({ processing: "failed", processing_error: message }).eq("id", id);
+    throw new Error(message);
+  };
+
+  for (let i = 0; i < chunks.length; i += 250) {
+    onStep({ label: "Saving the text", done: i, total: chunks.length });
+    const { error: e } = await supabase.from("document_chunks").insert(chunks.slice(i, i + 250).map((c) => ({ ...c, document_id: id })));
+    if (e) {
+      await supabase.from("document_chunks").delete().eq("document_id", id);
+      await supabase.from("documents").delete().eq("id", id);
+      throw new Error("The text couldn't be saved. Nothing was added — please try again.");
+    }
+  }
+  await supabase.from("documents").update({ chunk_count: chunks.length }).eq("id", id);
+
+  try {
+    await runIndexing(id, onStep);
+  } catch (e) {
+    return fail(`${(e as Error).message} Press Retry on the book in the library to continue where it stopped.`);
+  }
+  return { id, pages: pageCount, skipped, pieces: chunks.length };
 }

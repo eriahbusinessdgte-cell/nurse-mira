@@ -240,6 +240,27 @@ async function readPdf(file: File, onProgress: Progress): Promise<Extracted> {
   return { pages, pageCount: doc.numPages, method, imagePages: photoPages.length, unreadablePages: unreadable.sort((a, b) => a - b), notice };
 }
 
+/**
+ * Typed text only, page by page, for large open textbooks (no size limit, no photo reading —
+ * a textbook's picture-only pages are diagrams, not notes). Frees each page as it goes.
+ */
+export async function readPdfText(file: File, onProgress: Progress = () => {}): Promise<{ pages: Page[]; pageCount: number }> {
+  if (fileKind(file) !== "application/pdf") throw new ExtractError("Please choose the textbook's PDF file.");
+  onProgress("Opening the book…");
+  const doc = await loadPdf(file);
+  const pages: Page[] = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    if (n === 1 || n % 10 === 0) onProgress(`Reading page ${n} of ${doc.numPages}…`);
+    const page = await doc.getPage(n);
+    const content = await page.getTextContent();
+    pages.push({ page: n, text: content.items.map((item) => ("str" in item ? item.str + (item.hasEOL ? "\n" : " ") : "")).join("") });
+    page.cleanup();
+  }
+  const pageCount = doc.numPages;
+  await doc.cleanup();
+  return { pages, pageCount };
+}
+
 async function readDocx(file: File): Promise<Extracted> {
   const mammoth = (await import("mammoth/mammoth.browser")).default;
   const { value } = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
