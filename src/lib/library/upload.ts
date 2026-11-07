@@ -37,10 +37,11 @@ async function functionError(error: unknown) {
 }
 
 /**
- * Indexes the remaining text pieces of a document, a small batch at a time. Big documents
- * (textbooks) are split into a few lanes that run side by side, which is about 3× faster.
+ * Indexes the remaining text pieces of a document, a small batch at a time. (Lanes > 1 run
+ * side by side, but the free plan refuses that with "too busy", so everything uses 1 lane.)
  */
 export async function runIndexing(documentId: string, onStep: (s: Step) => void, lanes = 1) {
+  // Note: parallel lanes overload the free plan's function workers (HTTP 546), so callers use 1.
   const supabase = createClient();
   const { count } = await supabase.from("document_chunks").select("id", { count: "exact", head: true }).eq("document_id", documentId);
   const total = count ?? 0;
@@ -54,13 +55,15 @@ export async function runIndexing(documentId: string, onStep: (s: Step) => void,
         body: { action: "document", document_id: documentId, ...(from !== null ? { from_index: from, to_index: to } : {}) },
       });
       if (error || !data) {
+        // The free plan sometimes says "too busy" for a moment: wait longer each time, then give up.
         failures++;
-        if (failures >= 3) {
+        if (failures >= 8) {
           const message = await functionError(error);
           reportProblem("embed", problemKind(null, true), message);
           throw new Error(message);
         }
-        await new Promise((r) => setTimeout(r, 1500 * failures));
+        onStep({ label: "The server is busy — waiting a moment, then continuing", done: total - lastRemaining, total });
+        await new Promise((r) => setTimeout(r, Math.min(30_000, 2000 * 2 ** (failures - 1))));
         continue;
       }
       failures = 0;
@@ -153,7 +156,7 @@ export async function retryIndexing(documentId: string, onStep: (s: Step) => voi
   if (!count) throw new Error("This upload didn't finish saving. Please delete it and upload the file again.");
   await supabase.from("documents").update({ processing: "processing", processing_error: null }).eq("id", documentId);
   try {
-    await runIndexing(documentId, onStep, 3);
+    await runIndexing(documentId, onStep);
   } catch (e) {
     const message = `${(e as Error).message} Please try again later.`;
     await supabase.from("documents").update({ processing: "failed", processing_error: message }).eq("id", documentId);
@@ -345,7 +348,7 @@ export async function importTextbook(
   await supabase.from("documents").update({ chunk_count: chunks.length }).eq("id", id);
 
   try {
-    await runIndexing(id, onStep, 3);
+    await runIndexing(id, onStep);
   } catch (e) {
     return fail(`${(e as Error).message} Press Retry on the book in the library to continue where it stopped.`);
   }
