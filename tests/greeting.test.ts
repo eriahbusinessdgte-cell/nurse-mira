@@ -14,6 +14,10 @@ test("time of day", () => {
 test("Nurse never doubled", () => {
   assert.equal(firstName("Nurse Ana Reyes"), "Ana");
   assert.equal(firstName("nurse. Ana"), "Ana");
+  assert.equal(firstName("Test Student B", "Student B"), "Student B");
+  assert.equal(firstName("Ana Marie Reyes", "  Ana   Marie "), "Ana Marie");
+  assert.equal(firstName("Ana Reyes", "Nurse Annie"), "Annie");
+  assert.equal(firstName("Ana Reyes", "   "), "Ana");
   assert.equal(greetingFor({ full_name: "Nurse Ana", role: "student" }, at(8)), "Good morning, Nurse Ana");
 });
 test("preferred name wins; admin has no Nurse", () => {

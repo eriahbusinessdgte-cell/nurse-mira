@@ -6,10 +6,15 @@ export function timeOfDayGreeting(date: Date = new Date()): string {
   return "Good evening";
 }
 
-/** First name from what the student typed, without a "Nurse" they may have added themselves. */
+/**
+ * The name to greet someone by, without a "Nurse" they may have added themselves.
+ * A preferred name is used exactly as typed ("Ana Marie"); otherwise the first word of the full name.
+ */
 export function firstName(fullName: string, preferredName?: string | null): string {
-  const source = (preferredName?.trim() || fullName.trim()).replace(/^nurse\.?\s+/i, "");
-  return source.split(/\s+/)[0] ?? "";
+  const strip = (s: string) => s.trim().replace(/^nurse\.?\s+/i, "").replace(/\s+/g, " ");
+  const preferred = strip(preferredName ?? "");
+  if (preferred) return preferred.slice(0, 40);
+  return strip(fullName).split(" ")[0] ?? "";
 }
 
 /** Students: "Good morning, Nurse Ana". Admin: "Good morning, Erika". */
