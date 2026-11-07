@@ -148,3 +148,10 @@ Run live by Erika (admin + "Test Student B" in a private window), with database 
 | 25 | Unauthorized access | ✅ /admin redirects students; database refuses role change, settings, other people's records, invites; signed-out visitors get nothing |
 
 Fixed during testing: greeting uses the whole preferred name; "New conversation" button; tutor no longer invents meanings for unknown terms or repeats old chat summaries as facts (D-052).
+
+### Clean-up (2026-11-07) ✅
+Both test students deleted (after fixing D-053). Database checked: 0 students, only the admin login, 0 chats/quizzes/case studies/care plans/planner items/usage/problems/invites. Kept by Erika's choice: Pharmacology-01 Notes (70 pieces) and P1 Self-Directed Learning Activity (12 pieces) in the shared library (no uploader name), plus 2 study sheets.
+
+### Next
+1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
+2. Invite the first real students. Final 6-point report.
