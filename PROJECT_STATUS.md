@@ -158,7 +158,8 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 
 ### Hidden review notes (D-062)
 - "Hide from students" option on Add textbook; database rules hide such documents from students; tutor cites them as "Nurse Mira review notes" (tutor v14).
-- PNLE 2026 reviewer converted: 1,765 Q&A, 85 pages, 0.5 MB (PNLE_2026_Questions_and_Answers.pdf). Waiting for Erika to add it with the hide option ticked.
+- PNLE 2026 reviewer converted: 1,765 Q&A (reading copy: 85 pages, 0.5 MB). Added hidden as "Nurse Mira review notes" from a one-question-per-page version (1,632 pieces, no page numbers) — the first import packed 2–3 questions per piece and missed reworded questions.
+- Checked: a student account can't list, open or find it (documents, text pieces, duplicate check). Tutor self-test with reworded questions: EPI freezing → DPT (PNLE-style), midwife items → 1 per 5,000 formula, RA 9173 re-issuance → Sec. 24 conditions, IV 2 L/12 h at 10 gtt/ml → 28 gtt/min, furosemide → hypokalemia (textbook; overrides the reviewer's wrong key). Self-test retired.
 
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
