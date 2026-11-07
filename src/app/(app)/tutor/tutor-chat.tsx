@@ -18,12 +18,15 @@ import {
   Volume2,
   VolumeX,
   X,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { problemKind, reportProblem } from "@/lib/report-problem";
 import { sourceLabel } from "@/lib/library/labels";
 import { englishVoices, saveVoiceName, savedVoiceName, speakPieces, toSpeech } from "@/lib/tutor/voice";
-import { deleteConversation } from "./actions";
+import { deleteConversation, setKept } from "./actions";
+import { CHAT_KEEP_DAYS, expiryLabel } from "@/lib/tutor/expiry";
 
 export type ConversationItem = {
   id: string;
@@ -33,6 +36,7 @@ export type ConversationItem = {
   last_message_at: string;
   summary: string | null;
   next_step: string | null;
+  kept: boolean;
 };
 type SourceRef = { n: number; document_id: string; title: string; page: number | null; source_type: string; status: string; related?: boolean };
 export type ChatMessage = {
@@ -231,7 +235,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
       const newTitle = question.replace(/\s+/g, " ").slice(0, 70) + (question.length > 70 ? "…" : "");
       setConversationId(data.conversation_id);
       setTitle(newTitle);
-      setList((l) => [{ id: data.conversation_id, title: newTitle, mode, subject_id: subjectId || null, last_message_at: new Date().toISOString(), summary: null, next_step: null }, ...l]);
+      setList((l) => [{ id: data.conversation_id, title: newTitle, mode, subject_id: subjectId || null, last_message_at: new Date().toISOString(), summary: null, next_step: null, kept: false }, ...l]);
       window.history.replaceState(null, "", `/tutor?c=${data.conversation_id}`);
     } else {
       setList((l) => {
@@ -320,14 +324,29 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
     "Do a short mock oral recitation with me",
   ];
 
+  function toggleKeep(c: ConversationItem) {
+    const next = !c.kept;
+    setList((l) => l.map((x) => (x.id === c.id ? { ...x, kept: next } : x)));
+    startTransition(async () => {
+      const r = await setKept(c.id, next);
+      if (!r.ok) setList((l) => l.map((x) => (x.id === c.id ? { ...x, kept: !next } : x)));
+    });
+  }
+  const activeItem = list.find((c) => c.id === conversationId);
+
   const historyPanel = (
     <div className="flex h-full flex-col">
       <button type="button" onClick={newConversation} className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-mira-yellow px-3 py-2.5 text-sm font-medium text-mira-blue-dark hover:bg-mira-yellow-dark">
         <Plus size={16} aria-hidden /> New conversation
       </button>
-      <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-mira-muted">Saved conversations</p>
+      <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-mira-muted">Saved conversations</p>
+      {list.length > 0 && (
+        <p className="mb-2 px-1 text-xs text-mira-muted">
+          Chats are deleted {CHAT_KEEP_DAYS} days after your last message. Tap <Bookmark size={11} className="inline" aria-hidden /> to keep one.
+        </p>
+      )}
       {list.length === 0 ? (
-        <p className="px-1 text-sm text-mira-muted">Your conversations are saved here automatically.</p>
+        <p className="px-1 text-sm text-mira-muted">Your conversations are saved here for {CHAT_KEEP_DAYS} days after your last message. Tap the bookmark to keep one for good.</p>
       ) : (
         <ul className="-mx-1 flex-1 space-y-1 overflow-y-auto">
           {list.map((c) => (
@@ -340,7 +359,18 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                 <span className="text-xs text-mira-muted">
                   {when(c.last_message_at)} · {c.mode === "tea" ? "Tea" : "Clinical"}
                 </span>
+                <span className={`block text-xs ${c.kept ? "text-mira-blue" : "text-mira-muted"}`}>{expiryLabel(c.kept, c.last_message_at)}</span>
               </a>
+              <button
+                type="button"
+                onClick={() => toggleKeep(c)}
+                className={`mt-1 rounded p-1.5 hover:bg-mira-blue-soft ${c.kept ? "text-mira-blue" : "text-mira-muted"}`}
+                aria-label={c.kept ? `Stop keeping ${c.title}` : `Keep ${c.title}`}
+                aria-pressed={c.kept}
+                title={c.kept ? "Kept — tap to let it expire" : "Keep this chat"}
+              >
+                {c.kept ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
+              </button>
               <button
                 type="button"
                 onClick={() =>
@@ -390,6 +420,18 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
             <History size={18} />
           </button>
           <h1 className="min-w-0 flex-1 truncate font-semibold">{conversationId ? title : "AI Tutor"}</h1>
+          {activeItem && (
+            <button
+              type="button"
+              onClick={() => toggleKeep(activeItem)}
+              aria-pressed={activeItem.kept}
+              title={activeItem.kept ? "Kept — tap to let it expire" : `Keep this chat (otherwise deleted ${CHAT_KEEP_DAYS} days after the last message)`}
+              className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-sm ${activeItem.kept ? "bg-mira-blue-soft text-mira-blue" : "text-mira-muted hover:bg-mira-page"}`}
+            >
+              {activeItem.kept ? <BookmarkCheck size={16} aria-hidden /> : <Bookmark size={16} aria-hidden />}
+              <span className="hidden sm:inline">{activeItem.kept ? "Kept" : "Keep"}</span>
+            </button>
+          )}
 
           <div className="flex rounded-lg bg-mira-page p-1" role="radiogroup" aria-label="Tutor style">
             {(

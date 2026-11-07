@@ -14,7 +14,7 @@ async function Tutor({ searchParams }: PageProps<"/tutor">) {
   const ask = typeof params.ask === "string" ? params.ask.slice(0, 500) : "";
 
   const [{ data: conversations }, { data: mySubjects }, { data: limitRow }, { data: usage }, { data: modeRow }] = await Promise.all([
-    supabase.from("conversations").select("id, title, mode, subject_id, last_message_at, summary, next_step").order("last_message_at", { ascending: false }).limit(50),
+    supabase.from("conversations").select("id, title, mode, subject_id, last_message_at, summary, next_step, kept").order("last_message_at", { ascending: false }).limit(50),
     supabase.from("student_subjects").select("subjects(id, code, title, sort_order)").eq("student_id", profile.id),
     supabase.rpc("student_daily_limit"),
     supabase.from("ai_usage").select("answers").eq("student_id", profile.id).eq("day", manilaDay()).maybeSingle(),
