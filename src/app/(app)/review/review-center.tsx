@@ -126,7 +126,7 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
             <h1 className="text-xl font-semibold">Review Center</h1>
             <p className="mt-1 max-w-2xl text-sm text-mira-muted">
               Pick a subject and topic. Nurse Mira makes a study sheet from the shared library: summary, key concepts, terms, nursing implications,
-              practice questions, flashcards and a quick review sheet. Sheets are shared, so if a classmate already made one it opens instantly and
+              practice questions, flashcards and a quick review sheet. Your sheets are private to you, and opening one you already made again
               doesn&apos;t use your daily answers.
             </p>
           </div>

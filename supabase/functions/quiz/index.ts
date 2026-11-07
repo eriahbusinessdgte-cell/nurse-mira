@@ -3,7 +3,7 @@
 // POST { subject_id, focus?, count, types[], kind: "quiz"|"exam", time_limit_minutes?, source: "ai"|"review" }
 //  -> { quiz_id, remaining }  or  { error, kind: "limit" | "unavailable" | "invalid" }
 //
-// source "review": free — reuses practice questions from Review Center sheets of that subject.
+// source "review": free — reuses practice questions from the student's own Review Center sheets of that subject.
 // source "ai":     new PNLE-style questions from the shared library (uses one AI answer).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
 
   // A. Free: reuse Review Center practice questions.
   if (body.source === "review") {
-    const { data: sheets } = await db.from("review_sheets").select("focus, content, sources").eq("subject_id", subject.id);
+    const { data: sheets } = await db.from("review_sheets").select("focus, content, sources").eq("created_by", me.id).eq("subject_id", subject.id);
     // deno-lint-ignore no-explicit-any
     const pool = (sheets ?? []).filter((s: any) => !focus || s.focus.toLowerCase().includes(focus.toLowerCase()) || focus.toLowerCase().includes(s.focus.toLowerCase()))
       // deno-lint-ignore no-explicit-any

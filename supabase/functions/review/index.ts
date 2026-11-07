@@ -3,8 +3,8 @@
 // POST { subject_id, focus, topic_id?, refresh? }
 //  -> { sheet, cached, remaining }  or  { error, kind: "limit" | "unavailable" | "invalid" }
 //
-// A sheet for the same subject + topic is made once and then shared with every student,
-// so only the first request uses an AI answer. The admin can ask for a fresh version.
+// Sheets are private to the student who made them (D-061). Opening one again is free;
+// "refresh" makes a new version (uses an AI answer).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -161,10 +161,10 @@ Deno.serve(async (req) => {
   const { data: subject } = await db.from("subjects").select("id, code, title").eq("id", String(body.subject_id ?? "")).maybeSingle();
   if (!subject) return json(origin, 400, { error: "Please choose a subject.", kind: "invalid" });
   const key = focusKey(focus);
-  const refresh = !!body.refresh && me.role === "admin";
+  const refresh = !!body.refresh;
 
-  // 1. Already made? Share it.
-  const { data: existing } = await db.from("review_sheets").select("*").eq("subject_id", subject.id).eq("focus_key", key).maybeSingle();
+  // 1. Already made by this student? Open it again for free. (Sheets are private — D-061.)
+  const { data: existing } = await db.from("review_sheets").select("*").eq("created_by", me.id).eq("subject_id", subject.id).eq("focus_key", key).maybeSingle();
   if (existing && !refresh) {
     await db.from("review_sheets").update({ views: existing.views + 1 }).eq("id", existing.id);
     return json(origin, 200, { sheet: existing, cached: true });
@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
   const { data: usage } = await db.from("ai_usage").select("answers").eq("student_id", me.id).eq("day", day).maybeSingle();
   const used = usage?.answers ?? 0;
   if (me.role !== "admin" && used >= limit) {
-    return json(origin, 200, { kind: "limit", error: `Making a new study sheet uses one AI answer, and you've used all ${limit} for today. Sheets other students already made still open for free. Answers reset at midnight.` });
+    return json(origin, 200, { kind: "limit", error: `Making a new study sheet uses one AI answer, and you've used all ${limit} for today. Sheets you already made still open for free. Answers reset at midnight.` });
   }
 
   // 3. Library material for this topic.
@@ -252,8 +252,8 @@ Deno.serve(async (req) => {
     ? await db.from("review_sheets").update(row).eq("id", existing.id).select("*").single()
     : await db.from("review_sheets").insert(row).select("*").single();
   if (error || !saved) {
-    // Someone else made the same sheet a moment ago: return theirs.
-    const { data: other } = await db.from("review_sheets").select("*").eq("subject_id", subject.id).eq("focus_key", key).maybeSingle();
+    // The same sheet was saved a moment ago (e.g. a double tap): return it.
+    const { data: other } = await db.from("review_sheets").select("*").eq("created_by", me.id).eq("subject_id", subject.id).eq("focus_key", key).maybeSingle();
     if (other) return json(origin, 200, { sheet: other, cached: true });
     return json(origin, 500, { error: "The study sheet couldn't be saved. Please try again.", kind: "invalid" });
   }
