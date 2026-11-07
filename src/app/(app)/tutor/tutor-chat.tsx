@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -136,7 +135,6 @@ function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking
 }
 
 export function TutorChat({ conversations, active, initialMessages, subjects, remaining: initialRemaining, limit, studentName, initialQuestion, defaultMode }: Props) {
-  const router = useRouter();
   const [list, setList] = useState(conversations);
   const [conversationId, setConversationId] = useState<string | null>(active?.id ?? null);
   const [title, setTitle] = useState(active?.title ?? "New conversation");
@@ -299,7 +297,20 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
 
   function newConversation() {
     stopSpeech.current?.();
-    router.push("/tutor");
+    setSpeakingId(null);
+    // Clear the chat right here: after the first answer the address was changed quietly
+    // (replaceState), so navigating to "/tutor" alone looked like "same page" and did nothing.
+    setConversationId(null);
+    setTitle("New conversation");
+    setMessages([]);
+    setMode(defaultMode);
+    setSubjectId("");
+    setInput("");
+    setBanner(null);
+    setHistoryOpen(false);
+    if (window.location.pathname !== "/tutor" || window.location.search) {
+      window.history.replaceState(null, "", "/tutor");
+    }
   }
 
   const suggestions = [
@@ -338,7 +349,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                     const r = await deleteConversation(c.id);
                     if (r.ok) {
                       setList((l) => l.filter((x) => x.id !== c.id));
-                      if (c.id === conversationId) router.push("/tutor");
+                      if (c.id === conversationId) newConversation();
                     }
                   })
                 }
