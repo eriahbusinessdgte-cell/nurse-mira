@@ -115,3 +115,36 @@ Cloudflare added 6 Nov: backup AI for the tutor + handwriting reader with "Read 
 
 
 - Vercel's first build failed because a test file was included in the app's type check. Fixed the same day; tests now run separately (`npm test`).
+
+## Phase 8 — final acceptance tests (2026-11-07) ✅ 25 of 25 passed
+Run live by Erika (admin + "Test Student B" in a private window), with database checks by Claude.
+
+| # | Test | Result |
+|---|------|--------|
+| 1 | Administrator login | ✅ |
+| 2 | Student login | ✅ (Student B set up from the invite link) |
+| 3 | Account creation and invitations | ✅ |
+| 4 | Student privacy | ✅ Student B sees 0 of anyone else's chats, quizzes, case studies, care plans, planner, usage; admin sees 0 of students' private work |
+| 5 | Subject selection | ✅ |
+| 6 | Irregular subject selection | ✅ 1st-year load + NCM 109 from 2nd year |
+| 7 | Reviewer upload | ✅ |
+| 8 | Automatic shared-library indexing | ✅ all text pieces searchable |
+| 9 | Student B learns from Student A's reviewer | ✅ "Explain zidovudine" cited Pharmacology-01 Notes |
+| 10 | Source citations | ✅ |
+| 11 | Duplicate detection | ✅ second upload stopped, 1 copy stored |
+| 12 | Archiving | ✅ |
+| 13 | Archived document retrieval | ✅ still answered, then restored |
+| 14 | Permanent deletion | ✅ |
+| 15 | Search entries deleted too | ✅ 0 pieces left, tutor no longer finds it |
+| 16 | Storage monitoring | ✅ file count went down by one |
+| 17 | AI quota exhaustion | ✅ friendly "no answers left" message |
+| 18 | AI service unavailable | ✅ friendly message + listed in AI & Problems (temporary "broken AI" build, restored) |
+| 19 | Case study creation | ✅ |
+| 20 | NCP generation | ✅ |
+| 21 | Quiz creation and scoring | ✅ |
+| 22 | Conversation saving and resuming | ✅ after signing out and in |
+| 23 | Academic planner | ✅ exam shows on planner and dashboard |
+| 24 | Mobile (portrait and landscape) | ✅ |
+| 25 | Unauthorized access | ✅ /admin redirects students; database refuses role change, settings, other people's records, invites; signed-out visitors get nothing |
+
+Fixed during testing: greeting uses the whole preferred name; "New conversation" button; tutor no longer invents meanings for unknown terms or repeats old chat summaries as facts (D-052).
