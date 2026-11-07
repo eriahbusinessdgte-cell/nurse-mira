@@ -144,7 +144,7 @@ export function TextbookDialog() {
                       </>
                     )}
                     <p className="mt-2 text-xs text-mira-muted">
-                      A whole book takes about 10–30 minutes. Keep this tab open and your computer awake. If it stops, press Retry on the book in the
+                      A big book takes about 45–60 minutes. Keep this tab open and your computer awake. If it stops, press Retry on the book in the
                       library to continue.
                     </p>
                   </div>
