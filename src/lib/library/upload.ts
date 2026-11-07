@@ -36,27 +36,42 @@ async function functionError(error: unknown) {
   return "Indexing hit a problem.";
 }
 
-/** Indexes the remaining text pieces of a document, a small batch at a time. */
-export async function runIndexing(documentId: string, onStep: (s: Step) => void) {
+/**
+ * Indexes the remaining text pieces of a document, a small batch at a time. Big documents
+ * (textbooks) are split into a few lanes that run side by side, which is about 3× faster.
+ */
+export async function runIndexing(documentId: string, onStep: (s: Step) => void, lanes = 1) {
   const supabase = createClient();
-  for (let attempt = 0, failures = 0; attempt < 2000; attempt++) {
-    const { data, error } = await supabase.functions.invoke<{ remaining: number; total: number }>("embed", {
-      body: { action: "document", document_id: documentId },
-    });
-    if (error || !data) {
-      failures++;
-      if (failures >= 3) {
-        const message = await functionError(error);
-        reportProblem("embed", problemKind(null, true), message);
-        throw new Error(message);
+  const { count } = await supabase.from("document_chunks").select("id", { count: "exact", head: true }).eq("document_id", documentId);
+  const total = count ?? 0;
+  const useLanes = lanes > 1 && total > 300 ? lanes : 1;
+  const size = Math.ceil(total / useLanes);
+  let lastRemaining = total;
+
+  const lane = async (from: number | null, to: number | null) => {
+    for (let attempt = 0, failures = 0; attempt < 3000; attempt++) {
+      const { data, error } = await supabase.functions.invoke<{ remaining: number; total: number; lane_remaining: number | null }>("embed", {
+        body: { action: "document", document_id: documentId, ...(from !== null ? { from_index: from, to_index: to } : {}) },
+      });
+      if (error || !data) {
+        failures++;
+        if (failures >= 3) {
+          const message = await functionError(error);
+          reportProblem("embed", problemKind(null, true), message);
+          throw new Error(message);
+        }
+        await new Promise((r) => setTimeout(r, 1500 * failures));
+        continue;
       }
-      await new Promise((r) => setTimeout(r, 1500 * failures));
-      continue;
+      failures = 0;
+      lastRemaining = Math.min(lastRemaining, data.remaining);
+      onStep({ label: "Adding it to Nurse Mira's library", done: data.total - lastRemaining, total: data.total });
+      if ((data.lane_remaining ?? data.remaining) === 0) return;
     }
-    failures = 0;
-    onStep({ label: "Adding it to Nurse Mira's library", done: data.total - data.remaining, total: data.total });
-    if (data.remaining === 0) return;
-  }
+  };
+
+  if (useLanes === 1) return lane(null, null);
+  await Promise.all(Array.from({ length: useLanes }, (_, i) => lane(i * size, (i + 1) * size)));
 }
 
 export async function uploadDocument(input: UploadInput, onStep: (s: Step) => void): Promise<string> {
@@ -138,7 +153,7 @@ export async function retryIndexing(documentId: string, onStep: (s: Step) => voi
   if (!count) throw new Error("This upload didn't finish saving. Please delete it and upload the file again.");
   await supabase.from("documents").update({ processing: "processing", processing_error: null }).eq("id", documentId);
   try {
-    await runIndexing(documentId, onStep);
+    await runIndexing(documentId, onStep, 3);
   } catch (e) {
     const message = `${(e as Error).message} Please try again later.`;
     await supabase.from("documents").update({ processing: "failed", processing_error: message }).eq("id", documentId);
@@ -330,7 +345,7 @@ export async function importTextbook(
   await supabase.from("documents").update({ chunk_count: chunks.length }).eq("id", id);
 
   try {
-    await runIndexing(id, onStep);
+    await runIndexing(id, onStep, 3);
   } catch (e) {
     return fail(`${(e as Error).message} Press Retry on the book in the library to continue where it stopped.`);
   }

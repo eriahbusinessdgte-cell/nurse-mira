@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   const { data: me } = await admin.from("profiles").select("role, is_active").eq("id", who.user.id).single();
   if (!me?.is_active) return json(origin, 403, { error: "Your account is turned off." });
 
-  let body: { action?: string; document_id?: string; text?: string };
+  let body: { action?: string; document_id?: string; text?: string; from_index?: number; to_index?: number };
   try {
     body = await req.json();
   } catch {
@@ -62,13 +62,13 @@ Deno.serve(async (req) => {
       if (!doc) return json(origin, 404, { error: "Document not found." });
       if (doc.uploader_id !== who.user.id && me.role !== "admin") return json(origin, 403, { error: "Not your document." });
 
-      const { data: batch, error } = await admin
-        .from("document_chunks")
-        .select("id, content")
-        .eq("document_id", id)
-        .is("embedding", null)
-        .order("chunk_index")
-        .limit(BATCH);
+      // Optional lane (chunk_index range) so a browser can index a big book in parallel.
+      const from = Number.isInteger(body.from_index) ? Number(body.from_index) : null;
+      const to = Number.isInteger(body.to_index) ? Number(body.to_index) : null;
+      let q = admin.from("document_chunks").select("id, content").eq("document_id", id).is("embedding", null);
+      if (from !== null) q = q.gte("chunk_index", from);
+      if (to !== null) q = q.lt("chunk_index", to);
+      const { data: batch, error } = await q.order("chunk_index").limit(BATCH);
       if (error) throw error;
 
       for (const chunk of batch ?? []) {
@@ -83,6 +83,13 @@ Deno.serve(async (req) => {
         .eq("document_id", id)
         .is("embedding", null);
       const { count: total } = await admin.from("document_chunks").select("id", { count: "exact", head: true }).eq("document_id", id);
+      let laneRemaining: number | null = null;
+      if (from !== null || to !== null) {
+        let lq = admin.from("document_chunks").select("id", { count: "exact", head: true }).eq("document_id", id).is("embedding", null);
+        if (from !== null) lq = lq.gte("chunk_index", from);
+        if (to !== null) lq = lq.lt("chunk_index", to);
+        laneRemaining = (await lq).count ?? 0;
+      }
 
       if ((remaining ?? 0) === 0) {
         await admin
@@ -90,7 +97,7 @@ Deno.serve(async (req) => {
           .update({ processing: "ready", processing_error: null, chunk_count: total ?? 0 })
           .eq("id", id);
       }
-      return json(origin, 200, { remaining: remaining ?? 0, total: total ?? 0 });
+      return json(origin, 200, { remaining: remaining ?? 0, total: total ?? 0, lane_remaining: laneRemaining });
     }
 
     return json(origin, 400, { error: "Unknown action." });
