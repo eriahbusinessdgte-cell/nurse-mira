@@ -275,7 +275,7 @@ export function CarePlans({ plans: initialPlans, cases, initialGroup, remaining:
               {busy ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Sparkles size={18} aria-hidden />}
               {busy ? `Writing ${count} care plan${count === 1 ? "" : "s"}… (up to 30 seconds)` : `Generate ${count} NCP${count === 1 ? "" : "s"}`}
             </button>
-            <span className="text-xs text-mira-muted">Uses 1 AI answer ({remaining} left today).</span>
+            <span className="text-xs text-mira-muted">Uses 1 AI answer ({remaining} left today). Plans are a starting point — rewrite them in your own words and follow your instructor&apos;s rules on AI.</span>
           </div>
         </div>
       </Card>

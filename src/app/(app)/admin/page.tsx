@@ -45,7 +45,7 @@ async function Overview() {
 
   const today = manilaDay();
   const utcToday = new Date().toISOString().slice(0, 10);
-  const [active, inactive, notSetUp, subjects, activity, usage, limitRow, cf, settings] = await Promise.all([
+  const [active, inactive, notSetUp, subjects, activity, usage, limitRow, cf, settings, storageStats] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", true),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", false),
     supabase
@@ -64,7 +64,9 @@ async function Overview() {
     supabase.rpc("student_daily_limit"),
     supabase.from("cloudflare_usage").select("neurons, pages, answers").eq("day", utcToday).maybeSingle(),
     supabase.from("app_settings").select("key, value").in("key", ["last_backup_at", "daily_answer_pool"]),
+    supabase.rpc("admin_storage_stats"),
   ]);
+  const dbMb = Math.round(Number((storageStats.data as { database_bytes?: number } | null)?.database_bytes ?? 0) / 1048576);
   const setting = (k: string) => settings.data?.find((r) => r.key === k)?.value;
   const pool = Number(setting("daily_answer_pool") ?? 90);
   const lastBackup = typeof setting("last_backup_at") === "string" ? (setting("last_backup_at") as string) : null;
@@ -115,6 +117,20 @@ async function Overview() {
           </Card>
         ))}
       </div>
+
+      {dbMb >= 350 && (
+        <Card className="flex flex-wrap items-center gap-4 bg-red-50 ring-red-200">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold text-mira-danger">The database is getting full: {dbMb} MB of 500 MB</h2>
+            <p className="text-sm text-red-900">
+              Run a clean-up, or plan to upgrade Supabase to Pro ($25/month) before it reaches 500 MB — at the limit, new work may stop saving.
+            </p>
+          </div>
+          <ButtonLink href="/admin/cleanup" kind="secondary">
+            Clean up
+          </ButtonLink>
+        </Card>
+      )}
 
       {(backupAge === null || backupAge > 7) && (
         <Card className="flex flex-wrap items-center gap-4 bg-amber-50 ring-amber-200">

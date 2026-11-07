@@ -28,3 +28,19 @@ export function worthKeeping(originalBytes: number, smallerBytes: number) {
 export function renderScale(widthPt: number, heightPt: number, target = 1700) {
   return Math.min(2, target / Math.max(widthPt, heightPt));
 }
+
+/** Most pages were photographed and at most this share of them couldn't be read → store a typed copy. */
+export const TYPED_COPY_MIN_PHOTO_SHARE = 0.5;
+export const TYPED_COPY_MAX_UNREADABLE = 0.1;
+
+/**
+ * D-059: photographed reviewers are stored as a small typed Word copy instead of the photos —
+ * but only when the reading went well, so no notes are lost.
+ */
+export function shouldMakeTypedCopy(x: { mime: string; pageCount: number | null; imagePages: number; unreadable: number; chars: number }) {
+  if (x.chars < 300) return false;
+  const pages = x.mime.startsWith("image/") ? 1 : (x.pageCount ?? 0);
+  const photos = x.mime.startsWith("image/") ? 1 : x.imagePages;
+  if (!pages || photos / pages < TYPED_COPY_MIN_PHOTO_SHARE) return false;
+  return x.unreadable / photos <= TYPED_COPY_MAX_UNREADABLE;
+}

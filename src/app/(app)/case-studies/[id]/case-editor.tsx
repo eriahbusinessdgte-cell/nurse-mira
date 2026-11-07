@@ -155,7 +155,7 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
     const srcs = (data.sources ?? []) as { n: number; title: string; page: number | null }[];
     setMessage({
       ok: true,
-      text: `Drafted ${drafts.length} section${drafts.length === 1 ? "" : "s"}. Please read and edit them — fill in anything marked MISSING.${srcs.length ? ` Background used: ${[...new Set(srcs.map((s) => s.title))].join(", ")}.` : ""}`,
+      text: `Drafted ${drafts.length} section${drafts.length === 1 ? "" : "s"}. Please read and edit them — fill in anything marked MISSING. Drafts are a starting point: rewrite them in your own words and follow your instructor's rules on AI.${srcs.length ? ` Background used: ${[...new Set(srcs.map((s) => s.title))].join(", ")}.` : ""}`,
     });
   }
 

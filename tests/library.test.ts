@@ -92,3 +92,14 @@ test("Make smaller shows only for big photo-heavy files", () => {
   assert.equal(looksPhotoHeavy(1_700_000, 8, "application/pdf"), false); // already small
   assert.equal(looksPhotoHeavy(3_000_000, 1, "image/jpeg"), true);
 });
+
+import { shouldMakeTypedCopy } from "../src/lib/library/shrink-rules.ts";
+test("typed copy only for well-read photographed notes", () => {
+  const pdf = { mime: "application/pdf", pageCount: 50, imagePages: 50, unreadable: 1, chars: 40000 };
+  assert.equal(shouldMakeTypedCopy(pdf), true);
+  assert.equal(shouldMakeTypedCopy({ ...pdf, unreadable: 8 }), false); // too many pages unreadable
+  assert.equal(shouldMakeTypedCopy({ ...pdf, imagePages: 5 }), false); // mostly typed PDF already
+  assert.equal(shouldMakeTypedCopy({ ...pdf, chars: 100 }), false);
+  assert.equal(shouldMakeTypedCopy({ mime: "image/jpeg", pageCount: 1, imagePages: 1, unreadable: 0, chars: 900 }), true);
+  assert.equal(shouldMakeTypedCopy({ mime: "image/jpeg", pageCount: 1, imagePages: 1, unreadable: 1, chars: 900 }), false);
+});

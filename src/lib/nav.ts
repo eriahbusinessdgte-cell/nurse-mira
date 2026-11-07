@@ -22,6 +22,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/library", label: "Shared Library", icon: "Library" },
   { href: "/admin/storage", label: "Storage", icon: "HardDrive" },
   { href: "/admin/usage", label: "AI & Problems", icon: "Activity" },
+  { href: "/admin/cleanup", label: "Clean up", icon: "Eraser" },
   { href: "/admin/backup", label: "Backups", icon: "DatabaseBackup" },
   { href: "/admin/settings", label: "Settings", icon: "Settings" },
   { href: "/profile", label: "My Profile", icon: "UserRound" },

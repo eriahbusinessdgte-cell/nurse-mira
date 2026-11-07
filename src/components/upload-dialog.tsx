@@ -10,10 +10,13 @@ import { formatBytes, SOURCE_TYPES } from "@/lib/library/labels";
 import { suggestMetadata, type SubjectLite, type TopicLite } from "@/lib/library/suggest";
 import { uploadDocument, type Step } from "@/lib/library/upload";
 import { maybeShrink } from "@/lib/library/shrink";
+import { shouldMakeTypedCopy } from "@/lib/library/shrink-rules";
 import { totalChars } from "@/lib/library/chunk";
 import { SEM_LABEL, YEAR_LABEL } from "@/lib/nav";
 
 type Props = { subjects: SubjectLite[]; topics: TopicLite[]; label?: string };
+
+const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 type Prepared = { file: File; kind: string; sha: string; extracted: Extracted; chars: number; upload: File; uploadKind: string };
 
@@ -111,9 +114,26 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       }
 
 
-      // Make photo-heavy files smaller before uploading (free, in the browser).
-      const smaller = await maybeShrink(file, kind, extracted.pageCount, extracted.imagePages, setReading);
-      if (smaller) notes.push(`Nurse Mira made a smaller copy to save storage: ${formatBytes(file.size)} → ${formatBytes(smaller.size)}. The smaller copy is the one stored.`);
+      // Photographed notes that were read well are stored as a small typed Word copy (D-059);
+      // other photo-heavy files are made smaller (free, in the browser).
+      let smaller: File | null = null;
+      if (
+        shouldMakeTypedCopy({ mime: kind, pageCount: extracted.pageCount, imagePages: extracted.imagePages, unreadable: extracted.unreadablePages.length, chars })
+      ) {
+        setReading("Making a typed copy to save storage…");
+        const { makeDocx } = await import("@/lib/library/make-docx");
+        const blob = await makeDocx(s.title || file.name, extracted.pages.map((p) => ({ page: p.page, text: p.text })));
+        if (blob.size < file.size) {
+          smaller = new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-typed.docx`, { type: DOCX });
+          notes.push(
+            `These were photos, so Nurse Mira saved a typed Word copy instead (${formatBytes(file.size)} → ${formatBytes(smaller.size)}). Drawings and diagrams aren't in the typed copy — keep your original photos.`,
+          );
+        }
+      }
+      if (!smaller) {
+        smaller = await maybeShrink(file, kind, extracted.pageCount, extracted.imagePages, setReading);
+        if (smaller) notes.push(`Nurse Mira made a smaller copy to save storage: ${formatBytes(file.size)} → ${formatBytes(smaller.size)}. The smaller copy is the one stored.`);
+      }
       setWarning(notes.length ? notes.join(" ") : null);
 
       setPrepared({ file, kind, sha, extracted, chars, upload: smaller ?? file, uploadKind: smaller ? smaller.type : kind });

@@ -7,6 +7,7 @@
 // The AI must never invent assessment data: cues come only from what the student supplied;
 // anything else is listed separately as "to assess".
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { writingStyle } from "./writing-style.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -56,7 +57,7 @@ async function groq(model: string, messages: Msg[], maxTokens: number) {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, temperature: 0.2, max_completion_tokens: maxTokens, reasoning_effort: "low", response_format: { type: "json_object" } }),
+    body: JSON.stringify({ model, messages, temperature: 0.55, max_completion_tokens: maxTokens, reasoning_effort: "low", response_format: { type: "json_object" } }),
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) throw Object.assign(new Error(`Groq ${res.status}`), { status: res.status, detail: (await res.text().catch(() => "")).slice(0, 300) });
@@ -70,7 +71,7 @@ async function cloudflare(db: any, messages: Msg[], maxTokens: number) {
   const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/v1/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: CF_MODEL, messages, max_tokens: maxTokens, temperature: 0.2, reasoning_effort: "low", response_format: { type: "json_object" } }),
+    body: JSON.stringify({ model: CF_MODEL, messages, max_tokens: maxTokens, temperature: 0.55, reasoning_effort: "low", response_format: { type: "json_object" } }),
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) throw Object.assign(new Error(`Cloudflare ${res.status}`), { status: res.status, detail: (await res.text().catch(() => "")).slice(0, 300) });
@@ -165,7 +166,7 @@ Deno.serve(async (req) => {
 ${data}
 
 Write exactly ${count} nursing care plan${count === 1 ? "" : "s"}, in priority order.${focus ? `\nThe student wants these diagnoses/problems included if the data supports them: ${focus}` : ""}`;
-  const messages: Msg[] = [{ role: "system", content: SYSTEM }, { role: "user", content: user }];
+  const messages: Msg[] = [{ role: "system", content: SYSTEM + writingStyle(me.id) }, { role: "user", content: user }];
   const maxTokens = Math.min(7000, 600 + count * 700);
   const attempts = [
     { run: () => groq(MAIN_MODEL, messages, maxTokens) },
