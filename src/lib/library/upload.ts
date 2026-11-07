@@ -292,7 +292,10 @@ export async function replaceWithTypedCopy(
   return { before: data.before, after: data.after };
 }
 
-export type TextbookInput = { file: File; title: string; author: string; license: string; sha256: string };
+export type TextbookInput = { file: File; title: string; author: string; license: string; sha256: string; background?: boolean };
+
+/** Hidden "background knowledge" is cited to students only under this name, with no page numbers. */
+export const BACKGROUND_TITLE = "Nurse Mira review notes";
 export type TextbookResult = { id: string; pages: number; skipped: number; pieces: number };
 
 /**
@@ -315,7 +318,8 @@ export async function importTextbook(
   // Leave out reference lists (web addresses only), then number the pieces again.
   const chunks = chunkPages(pages)
     .filter((c) => !isReferenceChunk(c.content))
-    .map((c, i) => ({ ...c, chunk_index: i }));
+    .map((c, i) => ({ ...c, chunk_index: i, page_number: input.background ? null : c.page_number }));
+  const credit = `${input.author.trim()}${input.license.trim() ? ` · ${input.license.trim()}` : ""}`;
   if (chunks.length < 20) throw new Error("Very little typed text was found. This import is for textbooks with selectable text, not scans.");
 
   onStep({ label: "Saving details" });
@@ -323,14 +327,15 @@ export async function importTextbook(
     .from("documents")
     .insert({
       uploader_id: user.id,
-      title: input.title.trim().slice(0, 300),
+      title: input.background ? BACKGROUND_TITLE : input.title.trim().slice(0, 300),
       original_filename: input.file.name.slice(0, 255),
       mime_type: "application/pdf",
+      background: !!input.background,
       file_size: 0,
       sha256: input.sha256,
       visibility: "shared",
-      source_type: "textbook",
-      author: `${input.author.trim()}${input.license.trim() ? ` · ${input.license.trim()}` : ""}`.slice(0, 200),
+      source_type: input.background ? "review_center" : "textbook",
+      author: (input.background ? `${input.title.trim()} · ${credit}` : credit).slice(0, 200),
       rights_confirmed: true,
       allow_download: false,
       page_count: pageCount,

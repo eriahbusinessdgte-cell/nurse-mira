@@ -32,6 +32,7 @@ export type DocRow = {
   created_at: string;
   mime_type: string;
   unreadable_pages: number[] | null;
+  background?: boolean;
 };
 
 type Mode = "admin" | "mine" | "shared";
@@ -382,6 +383,7 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <Badge tone={p.tone}>{p.label}</Badge>
                   {d.status === "archived" && <Badge tone="yellow">Archived</Badge>}
+                  {d.background && <Badge tone="gray">Hidden from students · AI background knowledge</Badge>}
                   {d.visibility === "shared" && !d.file_path && <Badge tone="gray">Text only</Badge>}
                   {d.visibility === "shared" && d.allow_download && d.file_path && <Badge tone="blue">Download allowed</Badge>}
                 </div>

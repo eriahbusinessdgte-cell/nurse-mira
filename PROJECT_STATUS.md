@@ -156,6 +156,10 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 - ✅ Fundamentals of Nursing (OpenStax, CC BY 4.0): 1,961 pages → 7,512 text pieces, ≈ 48 MB of the 500 MB database (whole database 64 MB). Server check: "stages of pressure injuries" → cited pp. 1081–1104; "apical pulse" → cited pp. 289–307. Search 0.3 s (2.6 s on a cold start).
 - Planned (Erika's choice from the curriculum match): Pharmacology for Nurses, Maternal-Newborn Nursing, Medical-Surgical Nursing. Skipped: Clinical Nursing Skills (overlaps Fundamentals), Population Health (US system). Later: Psychiatric-Mental Health, Nutrition.
 
+### Hidden review notes (D-062)
+- "Hide from students" option on Add textbook; database rules hide such documents from students; tutor cites them as "Nurse Mira review notes" (tutor v14).
+- PNLE 2026 reviewer converted: 1,765 Q&A, 85 pages, 0.5 MB (PNLE_2026_Questions_and_Answers.pdf). Waiting for Erika to add it with the hide option ticked.
+
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
 2. Invite the first real students. Final 6-point report.

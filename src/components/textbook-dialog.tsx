@@ -26,6 +26,7 @@ export function TextbookDialog() {
   const [author, setAuthor] = useState("OpenStax");
   const [license, setLicense] = useState("CC BY 4.0");
   const [confirmed, setConfirmed] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<TextbookResult | null>(null);
@@ -48,7 +49,7 @@ export function TextbookDialog() {
     setStep({ label: "Checking the file" });
     try {
       const hash = await sha256(file);
-      const result = await importTextbook({ file, title, author, license, sha256: hash }, setStep, async (f, onProgress) => {
+      const result = await importTextbook({ file, title, author, license, sha256: hash, background: hidden }, setStep, async (f, onProgress) => {
         const { pages, pageCount } = await readPdfText(f, onProgress);
         onProgress("Tidying the text (removing page headers, contents and index pages)…");
         const prepared = prepareTextbookPages(pages);
@@ -83,10 +84,15 @@ export function TextbookDialog() {
             {done ? (
               <div className="space-y-3 text-sm">
                 <p className="text-green-700">
-                  ✓ “{title}” is in the library: {done.pieces.toLocaleString()} searchable text pieces from {done.pages.toLocaleString()} pages
+                  ✓ “{title}” is {hidden ? "saved as hidden background knowledge" : "in the library"}: {done.pieces.toLocaleString()} searchable text pieces from{" "}
+                  {done.pages.toLocaleString()} pages
                   {done.skipped ? ` (${done.skipped} contents, index or blank pages left out)` : ""}.
                 </p>
-                <p className="text-mira-muted">The AI Tutor can now cite it, with page numbers, for every student.</p>
+                <p className="text-mira-muted">
+                  {hidden
+                    ? "Students won't see it in the Library. The AI Tutor uses it and cites it only as “Nurse Mira review notes”."
+                    : "The AI Tutor can now cite it, with page numbers, for every student."}
+                </p>
                 <button type="button" onClick={close} className={buttonClass("primary", "w-full")}>
                   Done
                 </button>
@@ -126,8 +132,19 @@ export function TextbookDialog() {
                   </label>
                 </div>
                 <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} disabled={busy} className="mt-1" />
+                  <span>
+                    <span className="font-medium">Hide from students — AI background knowledge only.</span> Students can&apos;t see, open or download it; the
+                    AI Tutor learns from it and cites it as “Nurse Mira review notes”, without page numbers.
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
                   <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} disabled={busy} className="mt-1" />
-                  <span>This book has an open license (such as Creative Commons) that allows sharing it with my students.</span>
+                  <span>
+                    {hidden
+                      ? "I have permission from the owner of this material to use it in Nurse Mira."
+                      : "This book has an open license (such as Creative Commons) that allows sharing it with my students."}
+                  </span>
                 </label>
 
                 {step && !error && (
