@@ -152,6 +152,10 @@ Fixed during testing: greeting uses the whole preferred name; "New conversation"
 ### Clean-up (2026-11-07) ✅
 Both test students deleted (after fixing D-053). Database checked: 0 students, only the admin login, 0 chats/quizzes/case studies/care plans/planner items/usage/problems/invites. Kept by Erika's choice: Pharmacology-01 Notes (70 pieces) and P1 Self-Directed Learning Activity (12 pieces) in the shared library (no uploader name), plus 2 study sheets.
 
+### Textbooks
+- ✅ Fundamentals of Nursing (OpenStax, CC BY 4.0): 1,961 pages → 7,512 text pieces, ≈ 48 MB of the 500 MB database (whole database 64 MB). Server check: "stages of pressure injuries" → cited pp. 1081–1104; "apical pulse" → cited pp. 289–307. Search 0.3 s (2.6 s on a cold start).
+- Planned (Erika's choice from the curriculum match): Pharmacology for Nurses, Maternal-Newborn Nursing, Medical-Surgical Nursing. Skipped: Clinical Nursing Skills (overlaps Fundamentals), Population Health (US system). Later: Psychiatric-Mental Health, Nutrition.
+
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
 2. Invite the first real students. Final 6-point report.
