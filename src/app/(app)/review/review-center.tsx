@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BookOpenCheck, GraduationCap, Library, Loader2, Sparkles } from "lucide-react";
-import { buttonClass, Card, EmptyState, inputClass } from "@/components/ui";
+import { buttonClass, ButtonLink, Card, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { problemKind, reportProblem } from "@/lib/report-problem";
 import { SEM_LABEL, YEAR_LABEL } from "@/lib/nav";
@@ -130,6 +130,9 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
               doesn&apos;t use your daily answers.
             </p>
           </div>
+          <ButtonLink href="/review/full" kind="secondary">
+            Full reviewers
+          </ButtonLink>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -226,7 +229,7 @@ export function ReviewCenter({ subjects, topics, mySubjectIds, recent, initialSh
             </div>
             <p className="mt-2 text-xs text-mira-muted">
               {existing
-                ? "A classmate already made this sheet — opening it is free."
+                ? "You already made this sheet — opening it again is free."
                 : `A new sheet uses 1 of your daily AI answers (${remaining} left today). It takes about 10 seconds.`}
             </p>
           </form>

@@ -47,6 +47,7 @@ const TABLES: Record<string, Spec> = {
   messages: { key: ["conversation_id"], omit: ["id"], order: "id" },
   ai_usage: { key: ["student_id", "day"], order: "day" },
   review_sheets: { key: ["id"], order: "id" },
+  full_reviewers: { key: ["id"], omit: ["parts_total", "parts_done"], order: "id" },
   quizzes: { key: ["id"], order: "id" },
   quiz_attempts: { key: ["id"], order: "id" },
   case_studies: { key: ["id"], order: "id" },

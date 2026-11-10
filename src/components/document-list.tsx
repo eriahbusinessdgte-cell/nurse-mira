@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Download, FileText, Globe2, Lock, Minimize2, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { Archive, ArchiveRestore, BookOpenText, Download, FileText, Globe2, Lock, Minimize2, Pencil, RotateCw, ScanText, Trash2, X } from "lucide-react";
 import { Badge, buttonClass, EmptyState, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { deleteDocuments, setAllowDownload, setArchived, updateDocument, type Result } from "@/lib/library/actions";
@@ -446,6 +447,16 @@ export function DocumentList({ docs, mode, subjects, topics, currentUserId, empt
                       <FileText size={15} aria-hidden /> Replace with typed copy
                     </button>
                   )}
+                {d.processing === "ready" && d.chunk_count > 0 && !d.background && (
+                  <Link
+                    href={`${isAdmin ? "/admin/reviewers" : "/review/full"}?doc=${d.id}`}
+                    className="rounded-lg p-2 text-mira-muted hover:bg-mira-page hover:text-mira-ink"
+                    aria-label={`Make a full reviewer of ${d.title}`}
+                    title="Make a full reviewer"
+                  >
+                    <BookOpenText size={17} />
+                  </Link>
+                )}
                 {canDownload && (
                   <button type="button" onClick={() => download(d)} className="rounded-lg p-2 text-mira-muted hover:bg-mira-page hover:text-mira-ink" aria-label={`Download ${d.title}`} title="Download original">
                     <Download size={17} />

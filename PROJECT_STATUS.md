@@ -161,6 +161,10 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 - PNLE 2026 reviewer converted: 1,765 Q&A (reading copy: 85 pages, 0.5 MB). Added hidden as "Nurse Mira review notes" from a one-question-per-page version (1,632 pieces, no page numbers) — the first import packed 2–3 questions per piece and missed reworded questions.
 - Checked: a student account can't list, open or find it (documents, text pieces, duplicate check). Tutor self-test with reworded questions: EPI freezing → DPT (PNLE-style), midwife items → 1 per 5,000 formula, RA 9173 re-issuance → Sec. 24 conditions, IV 2 L/12 h at 10 gtt/ml → 28 gtt/min, furosemide → hypokalemia (textbook; overrides the reviewer's wrong key). Self-test retired.
 
+### Full reviewers and bigger uploads (2026-11-10)
+- D-063 Full reviewers: admin page "Full reviewers", students' Review Center → Full reviewers, book icon on each library document. `full-review` function v1; table `full_reviewers` (private or shared, RLS: shared or own). One-part self-test passed (CHN_G2).
+- D-064 Uploads up to 100 MB with typed-copy fallback over 25 MB.
+
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
 2. Invite the first real students. Final 6-point report.

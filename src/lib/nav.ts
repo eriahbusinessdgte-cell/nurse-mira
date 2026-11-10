@@ -20,6 +20,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/students", label: "Students", icon: "Users" },
   { href: "/admin/curriculum", label: "Curriculum", icon: "BookMarked" },
   { href: "/admin/library", label: "Shared Library", icon: "Library" },
+  { href: "/admin/reviewers", label: "Full reviewers", icon: "BookOpenText" },
   { href: "/admin/storage", label: "Storage", icon: "HardDrive" },
   { href: "/admin/usage", label: "AI & Problems", icon: "Activity" },
   { href: "/admin/cleanup", label: "Clean up", icon: "Eraser" },

@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowLeft, ChevronLeft, ChevronRight, Lightbulb, MessageCircleHeart, Printer, RotateCcw, Shuffle } from "lucide-react";
 import { buttonClass, Card } from "@/components/ui";
 import { sourceLabel } from "@/lib/library/labels";
-import type { SheetRow } from "./review-center";
+import type { SheetContent, SheetRow } from "./review-center";
 
 const TABS = [
   ["overview", "Overview"],
@@ -19,9 +19,9 @@ const TABS = [
 type Tab = (typeof TABS)[number][0];
 
 const cite = (t: string) => t.replace(/\[S(\d{1,2})\]/g, "[S$1](#src-$1)");
-const stripCites = (t: string) => t.replace(/\s*\[S\d{1,2}\]/g, "");
+export const stripCites = (t: string) => t.replace(/\s*\[S\d{1,2}\]/g, "");
 
-function Md({ children, inline = false }: { children: string; inline?: boolean }) {
+export function Md({ children, inline = false }: { children: string; inline?: boolean }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -55,9 +55,8 @@ function seededOrder(n: number, seed: string) {
   return order;
 }
 
-function Questions({ sheet }: { sheet: SheetRow }) {
-  const qs = sheet.content.practice_questions;
-  const orders = useMemo(() => qs.map((q, i) => seededOrder(q.options.length, `${sheet.id}-${i}`)), [qs, sheet.id]);
+export function Questions({ seed, qs }: { seed: string; qs: SheetContent["practice_questions"] }) {
+  const orders = useMemo(() => qs.map((q, i) => seededOrder(q.options.length, `${seed}-${i}`)), [qs, seed]);
   const [picked, setPicked] = useState<Record<number, number>>({});
   const answered = Object.keys(picked).length;
   const score = Object.entries(picked).filter(([i, p]) => qs[Number(i)].answer === p).length;
@@ -125,8 +124,7 @@ function Questions({ sheet }: { sheet: SheetRow }) {
   );
 }
 
-function Flashcards({ sheet }: { sheet: SheetRow }) {
-  const cards = sheet.content.flashcards;
+export function Flashcards({ cards }: { cards: SheetContent["flashcards"] }) {
   const [order, setOrder] = useState(() => cards.map((_, i) => i));
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -338,8 +336,8 @@ export function SheetView({ sheet, subjectLabel, onBack }: { sheet: SheetRow; su
           </div>
         )}
 
-        {tab === "questions" && <Questions sheet={sheet} />}
-        {tab === "flashcards" && <Flashcards sheet={sheet} />}
+        {tab === "questions" && <Questions seed={sheet.id} qs={c.practice_questions} />}
+        {tab === "flashcards" && <Flashcards cards={c.flashcards} />}
 
         {tab === "quick" && (
           <div className="space-y-4">
