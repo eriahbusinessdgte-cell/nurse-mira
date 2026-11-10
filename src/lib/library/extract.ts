@@ -18,7 +18,10 @@ export const ACCEPTED: Record<string, string> = {
   "image/png": "Photo",
 };
 export const ACCEPT_ATTR = ".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png";
+/** Largest file that can be stored as it is (the storage bucket's limit). */
 export const MAX_BYTES = 25 * 1024 * 1024;
+/** Largest file the browser will read. Bigger-than-25 MB files are stored as a smaller or typed copy. */
+export const MAX_READ_BYTES = 100 * 1024 * 1024;
 const MAX_OCR_PAGES = 30;
 const MAX_VISION_PAGES = 80;
 const VISION_WIDTH = 1600; // pixels; enough for handwriting, small enough to send quickly
@@ -289,7 +292,7 @@ async function readPptx(file: File): Promise<Extracted> {
 export async function extractText(file: File, onProgress: Progress = () => {}): Promise<Extracted> {
   const kind = fileKind(file);
   if (!kind) throw new ExtractError("This type of file isn't supported. Please upload a PDF, Word (.docx), PowerPoint (.pptx), text file, or a JPG/PNG photo.");
-  if (file.size > MAX_BYTES) throw new ExtractError("This file is larger than 25 MB. Please compress it or split it into smaller files. (Adding a whole open textbook? The admin can use “Add textbook” in the Shared Library.)");
+  if (file.size > MAX_READ_BYTES) throw new ExtractError("This file is larger than 100 MB. Please split it into smaller files. (Adding a whole open textbook? The admin can use “Add textbook” in the Shared Library.)");
   if (file.size === 0) throw new ExtractError("This file is empty.");
 
   onProgress("Reading the file…");

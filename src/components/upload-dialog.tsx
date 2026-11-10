@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, FileUp, Sparkles, Upload, X } from "lucide-react";
 import { buttonClass, inputClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { ACCEPT_ATTR, ACCEPTED, ExtractError, extractText, fileKind, sha256, type Extracted } from "@/lib/library/extract";
+import { ACCEPT_ATTR, ACCEPTED, ExtractError, MAX_BYTES, extractText, fileKind, sha256, type Extracted } from "@/lib/library/extract";
 import { formatBytes, SOURCE_TYPES } from "@/lib/library/labels";
 import { suggestMetadata, type SubjectLite, type TopicLite } from "@/lib/library/suggest";
 import { uploadDocument, type Step } from "@/lib/library/upload";
@@ -133,6 +133,31 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
       if (!smaller) {
         smaller = await maybeShrink(file, kind, extracted.pageCount, extracted.imagePages, setReading);
         if (smaller) notes.push(`Nurse Mira made a smaller copy to save storage: ${formatBytes(file.size)} → ${formatBytes(smaller.size)}. The smaller copy is the one stored.`);
+      }
+      // Still over the 25 MB storage limit (e.g. a picture-heavy PowerPoint): keep a typed Word copy of its text.
+      if ((smaller ?? file).size > MAX_BYTES) {
+        if (chars < 300) {
+          throw new ExtractError(
+            `This file is ${formatBytes(file.size)} and has very little typed text, so it can't be stored. Please save it as a PDF, compress its pictures, or split it into smaller files.`,
+          );
+        }
+        setReading("The file is over 25 MB — making a typed copy…");
+        const { makeDocx } = await import("@/lib/library/make-docx");
+        const slides = kind.includes("presentationml");
+        const blob = await makeDocx(
+          s.title || file.name,
+          extracted.pages.map((p) => ({ page: p.page, text: p.text })),
+          {
+            note: `Typed copy made by Nurse Mira because the original ${slides ? "PowerPoint" : "file"} (${file.name}) was over 25 MB. Pictures, diagrams and slide designs aren't included.`,
+            unit: slides ? "Slide" : "Page",
+          },
+        );
+        smaller = new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-typed.docx`, { type: DOCX });
+        const shrunkNote = notes.findIndex((n) => n.startsWith("Nurse Mira made a smaller copy"));
+        if (shrunkNote >= 0) notes.splice(shrunkNote, 1);
+        notes.push(
+          `This file is over 25 MB, so Nurse Mira stores a typed Word copy of its text instead (${formatBytes(file.size)} → ${formatBytes(smaller.size)}). Pictures and slide designs aren't in the typed copy — keep your original. The AI Tutor uses the same text either way.`,
+        );
       }
       setWarning(notes.length ? notes.join(" ") : null);
 
@@ -275,7 +300,7 @@ export function UploadDialog({ subjects, topics, label = "Upload" }: Props) {
                       e.target.value = "";
                     }}
                   />
-                  <p className="mt-2 text-xs text-mira-muted">PDF, Word, PowerPoint, text, or JPG/PNG photo · up to 25 MB</p>
+                  <p className="mt-2 text-xs text-mira-muted">PDF, Word, PowerPoint, text, or JPG/PNG photo · up to 100 MB (files over 25 MB are stored as a smaller or typed copy)</p>
                 </div>
 
                 {reading && (
