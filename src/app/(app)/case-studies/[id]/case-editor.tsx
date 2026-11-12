@@ -387,6 +387,11 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
                   <ClipboardList size={15} aria-hidden /> Open the NCP Builder for this case — make and link the full care plans
                 </Link>
               )}
+              {/drug stud/i.test(s.title) && (
+                <Link href={`/drug-studies?case=${initial.id}`} className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-mira-blue hover:underline">
+                  <ClipboardList size={15} aria-hidden /> Open the Drug Study Maker for this case — make and link the drug studies
+                </Link>
+              )}
             </Card>
           ))}
           {missing === 0 && sections.every((s) => s.content.trim()) && (

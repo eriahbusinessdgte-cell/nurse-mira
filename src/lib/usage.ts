@@ -47,6 +47,7 @@ export const TOOL_LABEL: Record<string, string> = {
   quiz: "Quizzes",
   "case-draft": "Case study draft",
   ncp: "Care plans",
+  "drug-study": "Drug studies",
   "read-page": "Handwriting reader",
   embed: "Library search setup",
   page: "A page",

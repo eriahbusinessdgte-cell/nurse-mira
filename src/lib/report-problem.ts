@@ -2,7 +2,7 @@
 // student typed or read — only which tool, what kind of problem and the app's own message.
 import { createClient } from "@/lib/supabase/client";
 
-export type ProblemTool = "tutor" | "review" | "quiz" | "case-draft" | "ncp" | "read-page" | "embed" | "page";
+export type ProblemTool = "tutor" | "review" | "quiz" | "case-draft" | "ncp" | "drug-study" | "read-page" | "embed" | "page";
 
 export function problemKind(data: unknown, failed: boolean): string {
   const k = (data as { kind?: unknown } | null)?.kind;

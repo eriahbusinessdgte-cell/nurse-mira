@@ -165,6 +165,9 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 - D-063 Full reviewers: admin page "Full reviewers", students' Review Center → Full reviewers, book icon on each library document. `full-review` function v1; table `full_reviewers` (private or shared, RLS: shared or own). One-part self-test passed (CHN_G2).
 - D-064 Uploads up to 100 MB with typed-copy fallback over 25 MB.
 
+### Drug Study Maker (2026-11-12)
+- D-065: menu "Drug Studies"; `drug-study` function v1; table `drug_studies` (private, RLS like care plans); print at /print/drug; Word export. Self-test passed.
+
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
 2. Invite the first real students. Final 6-point report.

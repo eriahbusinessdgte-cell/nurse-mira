@@ -14,6 +14,7 @@ import {
   DatabaseBackup,
   Eraser,
   BookOpenText,
+  Pill,
   Activity,
   LayoutDashboard,
   Library,
@@ -48,6 +49,7 @@ const ICONS: Record<string, LucideIcon> = {
   DatabaseBackup,
   Eraser,
   BookOpenText,
+  Pill,
   Activity,
   Settings,
 };

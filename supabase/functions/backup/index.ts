@@ -52,6 +52,7 @@ const TABLES: Record<string, Spec> = {
   quiz_attempts: { key: ["id"], order: "id" },
   case_studies: { key: ["id"], order: "id" },
   care_plans: { key: ["id"], order: "id" },
+  drug_studies: { key: ["id"], order: "id" },
   planner_items: { key: ["id"], order: "id" },
   cloudflare_usage: { key: ["day"], order: "day" },
 };

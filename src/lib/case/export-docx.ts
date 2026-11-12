@@ -50,7 +50,7 @@ export async function markdownToDocx(docTitle: string, subtitle: string, blocks:
                   children: Array.from({ length: cols }, (_, ci) =>
                     new TableCell({
                       borders: { top: border, bottom: border, left: border, right: border },
-                      children: [new Paragraph({ children: runs(r[ci] ?? "", { bold: ri === 0 }) })],
+                      children: (r[ci] ?? "").split(/<br\s*\/?>/i).map((t) => new Paragraph({ children: runs(t, { bold: ri === 0 }) })),
                     }),
                   ),
                 }),

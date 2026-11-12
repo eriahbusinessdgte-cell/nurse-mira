@@ -9,6 +9,7 @@ export const STUDENT_NAV: NavItem[] = [
   { href: "/review", label: "Review Center", icon: "GraduationCap" },
   { href: "/case-studies", label: "Case Studies", icon: "FileHeart" },
   { href: "/care-plans", label: "Nursing Care Plans", icon: "ClipboardList" },
+  { href: "/drug-studies", label: "Drug Studies", icon: "Pill" },
   { href: "/quizzes", label: "Quizzes & Exams", icon: "ListChecks" },
   { href: "/planner", label: "My Planner", icon: "CalendarDays" },
   { href: "/library", label: "My Library", icon: "Library" },
