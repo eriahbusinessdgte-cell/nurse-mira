@@ -1,5 +1,6 @@
 "use client";
 
+import { Mira } from "@/components/mira";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Clock, Flag, MessageCircleHeart, Play, RotateCcw, X } from "lucide-react";
@@ -231,6 +232,7 @@ export function QuizTaker({ quiz, attempts: initialAttempts }: { quiz: Quiz; att
     return (
       <div className="mx-auto max-w-3xl space-y-5">
         <Card className="text-center">
+          <Mira pose={percent >= 85 ? "celebrate" : percent >= 60 ? "thumbs-up" : "pleading"} height={140} className="mx-auto mb-2" />
           <p className="text-sm text-mira-muted">{quiz.title}</p>
           <p className={`mt-2 text-5xl font-bold ${percent >= 75 ? "text-green-700" : percent >= 50 ? "text-amber-600" : "text-mira-danger"}`}>{percent}%</p>
           <p className="mt-1 font-medium">

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { RotateCcw } from "lucide-react";
 import { Card, buttonClass } from "@/components/ui";
+import { Mira } from "@/components/mira";
 import { reportProblem } from "@/lib/report-problem";
 
 // Shown if a page breaks unexpectedly. The admin's Problems list gets a short note.
@@ -14,6 +15,7 @@ export default function AppError({ error, retry }: { error: unknown; retry: () =
 
   return (
     <Card className="mx-auto mt-10 max-w-lg text-center">
+      <Mira pose="surprised" height={130} className="mx-auto mb-2" />
       <h1 className="text-lg font-semibold">This page hit a problem</h1>
       <p className="mt-2 text-sm text-mira-muted">Nothing you saved was lost. Please try again — if it keeps happening, let your admin know.</p>
       <button type="button" onClick={() => retry()} className={buttonClass("primary", "mt-4")}>

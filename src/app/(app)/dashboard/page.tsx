@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowRight, BookOpen, CalendarDays, Coffee, MessageCircleHeart, Sparkles, Stethoscope } from "lucide-react";
 import { Greeting } from "@/components/greeting";
+import { Mira } from "@/components/mira";
 import { MiniCalendar } from "@/components/mini-calendar";
 import { PageLoading } from "@/components/page-loading";
 import { ButtonLink, Card, EmptyState } from "@/components/ui";
@@ -58,7 +59,8 @@ async function Dashboard() {
         <Card className="relative overflow-hidden">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-mira-blue-soft" aria-hidden />
           <div className="absolute -bottom-12 right-20 h-28 w-28 rounded-full bg-mira-yellow/25" aria-hidden />
-          <div className="relative">
+          <Mira pose="hello" height={170} className="absolute -bottom-4 right-6 hidden sm:block" priority />
+          <div className="relative sm:pr-32">
             <Greeting person={profile} className="text-2xl font-semibold" />
             <p className="mt-2 max-w-lg text-mira-muted">
               {profile.year_level && profile.current_semester

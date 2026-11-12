@@ -1,5 +1,6 @@
 "use client";
 
+import { Mira, MiraFace } from "@/components/mira";
 import { useEffect, useRef, useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -517,9 +518,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
           <div className="mx-auto max-w-3xl space-y-5">
             {messages.length === 0 && (
               <div className="py-6 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-mira-blue text-white">
-                  <Stethoscope size={26} aria-hidden />
-                </div>
+                <Mira pose="hello" height={150} className="mx-auto mb-3" priority />
                 <h2 className="text-xl font-semibold">Hi Nurse {studentName}! What shall we study?</h2>
                 <p className="mx-auto mt-2 max-w-md text-sm text-mira-muted">
                   Ask anything about your nursing subjects. Nurse Mira answers from the shared library when it can and shows its sources.
@@ -541,7 +540,8 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                   <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-mira-blue px-4 py-3 text-sm text-white">{m.content}</p>
                 </div>
               ) : (
-                <div key={m.id} className="flex">
+                <div key={m.id} className="flex items-start gap-2">
+                  <MiraFace size={34} className="mt-1 hidden sm:block" />
                   <Answer message={m} speaking={speakingId === m.id} onSpeak={() => (voiceSupported.speak ? speak(m) : undefined)} />
                 </div>
               ),
@@ -549,6 +549,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
 
             {sending && (
               <div className="flex items-center gap-2 text-sm text-mira-muted" role="status">
+                <Mira pose="thinking" height={64} />
                 <span className="flex gap-1">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-mira-blue [animation-delay:-0.3s]" />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-mira-blue [animation-delay:-0.15s]" />
@@ -569,6 +570,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                 role="alert"
                 className={`mb-2 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-sm ${banner.kind === "limit" ? "bg-amber-50 text-amber-900" : "bg-red-50 text-mira-danger"}`}
               >
+                {banner.kind === "limit" ? <Mira pose="sleepy" height={56} /> : banner.kind === "unavailable" ? <Mira pose="surprised" height={56} /> : null}
                 <span className="flex-1">{banner.text}</span>
                 {banner.retry && (
                   <button type="button" onClick={() => send(banner.retry)} className="rounded-md bg-white px-2 py-1 text-xs font-medium ring-1 ring-current">

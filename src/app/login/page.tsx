@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { PageLoading } from "@/components/page-loading";
+import { Mira } from "@/components/mira";
 import { LoginForm } from "./login-form";
 
 export const metadata = { title: "Sign in · Nurse Mira" };
@@ -18,9 +19,7 @@ async function LoginContent({ searchParams }: PageProps<"/login">) {
     <main className="flex flex-1 items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-mira-blue text-2xl font-semibold text-white">
-            M
-          </div>
+          <Mira pose="hello" height={150} className="mx-auto mb-3" priority alt="Nurse Mira waving hello" />
           <h1 className="text-2xl font-semibold">Nurse Mira</h1>
           <p className="mt-1 text-sm text-mira-muted">Your Personal Nursing School Companion</p>
         </div>

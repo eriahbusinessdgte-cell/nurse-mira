@@ -1,4 +1,5 @@
 // Shared building blocks so every page looks the same.
+import { Mira } from "@/components/mira";
 import Link from "next/link";
 
 export function PageHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
@@ -17,9 +18,10 @@ export function Card({ className = "", children }: { className?: string; childre
   return <section className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ring-mira-line ${className}`}>{children}</section>;
 }
 
-export function EmptyState({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+export function EmptyState({ title, children, action, mira = true }: { title: string; children: React.ReactNode; action?: React.ReactNode; mira?: boolean }) {
   return (
     <div className="rounded-xl border border-dashed border-mira-line bg-mira-page/60 px-5 py-8 text-center">
+      {mira && <Mira pose="thinking" height={96} className="mx-auto mb-2" />}
       <p className="font-medium">{title}</p>
       <div className="mx-auto mt-1 max-w-md text-sm text-mira-muted">{children}</div>
       {action && <div className="mt-4">{action}</div>}
