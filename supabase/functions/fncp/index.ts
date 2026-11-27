@@ -44,14 +44,17 @@ const COLUMNS = [
 type Key = (typeof COLUMNS)[number][0];
 type Row = Record<Key, string>;
 
-const BLOCK: [RegExp, string][] = [
-  [/(\+63|\b0)9\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/, "a phone number"],
-  [/\b(patient'?s?\s+name|full\s*name|pangalan)\s*[:\-]/i, "a patient name field"],
-  [/\b(hospital|case|record|chart)\s*(no\.?|number|#)\s*[:#]?\s*[A-Z0-9-]{3,}/i, "a hospital or record number"],
-  [/\b(MRN|PhilHealth|SSS|GSIS)\b\s*[:#]?\s*[0-9][0-9 -]{4,}/i, "an ID number"],
-  [/[\w.+-]+@[\w-]+\.[\w.]+/, "an email address"],
-  [/\b(Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-z]{2,}/, "a name with a title"],
+// Never refuses (Erika, 2026-11-26): identifying details are quietly left out before the AI sees the text,
+// so no real person's contact details, ID numbers or names reach the AI service (original privacy rule).
+const REDACT: [RegExp, string][] = [
+  [/(\+63|\b0)9\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/g, "[phone number removed]"],
+  [/\b(patient'?s?\s+name|full\s*name|pangalan)\s*[:\-]\s*[^,.\n]{1,60}/gi, "$1: [name removed]"],
+  [/\b(hospital|case|record|chart)\s*(no\.?|number|#)\s*[:#]?\s*[A-Z0-9-]{3,}/gi, "[record number removed]"],
+  [/\b(MRN|PhilHealth|SSS|GSIS)\b\s*[:#]?\s*[0-9][0-9 -]{4,}/gi, "[ID number removed]"],
+  [/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email removed]"],
+  [/\b(Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-z]{2,}(\s+[A-Z][a-z]{2,})?/g, "the client"],
 ];
+const redact = (t: string) => REDACT.reduce((acc, [re, by]) => acc.replace(re, by), t);
 
 type Msg = { role: "system" | "user"; content: string };
 async function groq(model: string, messages: Msg[], maxTokens: number) {
@@ -160,9 +163,7 @@ Deno.serve(async (req) => {
   const input = String(action === "section" ? (saved?.input ?? "") : (body.input ?? "")).trim().slice(0, 6000);
   if (action === "generate" && input.length < 10) return json(origin, 400, { error: "Please describe the family problem or situation (a sentence or more).", kind: "invalid" });
   if (action === "section" && !saved) return json(origin, 400, { error: "Save the plan first.", kind: "invalid" });
-  for (const [re, what] of BLOCK) {
-    if (re.test(input)) return json(origin, 400, { error: `Your description seems to contain ${what}. Please remove it first — Nurse Mira doesn't send identifying details to the AI.`, kind: "invalid" });
-  }
+  const forAi = redact(input); // what the AI sees; the student's own text is saved unchanged
 
   const day = manilaDay();
   const { data: limitValue } = await db.rpc("student_daily_limit");
@@ -176,8 +177,8 @@ Deno.serve(async (req) => {
   // Background facts from the library (CHN material, review notes, textbooks) — optional.
   let library = "";
   try {
-    const embedding = await embedder.run(input.slice(0, 1500), { mean_pool: true, normalize: true });
-    const { data: hits } = await db.rpc("search_library", { query_embedding: JSON.stringify(embedding), query_text: input.slice(0, 300), preferred_subject: null, match_count: 4 });
+    const embedding = await embedder.run(forAi.slice(0, 1500), { mean_pool: true, normalize: true });
+    const { data: hits } = await db.rpc("search_library", { query_embedding: JSON.stringify(embedding), query_text: forAi.slice(0, 300), preferred_subject: null, match_count: 4 });
     library = ((hits ?? []) as { content: string; score: number }[])
       .filter((h) => h.score >= 0.86)
       .slice(0, 2)
@@ -192,7 +193,7 @@ Deno.serve(async (req) => {
   if (action === "generate") {
     messages = [
       { role: "system", content: `${RULES}\n${writingStyle(me.id)}\n- Whatever the voice above, keep the level of a competent nursing student.\n\nReply ONLY with JSON: {"rows": [{"family_problem": "…", "diagnosis": "…", "goal": "…", "objectives": "…", "responsibilities": "…", "resources": "…", "evaluation": "…"}]}` },
-      { role: "user", content: `STUDENT'S DESCRIPTION (problem, situation, context and instructions):\n${input}\n\nLIBRARY TEXT:\n${library || "(none)"}` },
+      { role: "user", content: `STUDENT'S DESCRIPTION (problem, situation, context and instructions):\n${forAi}\n\nLIBRARY TEXT:\n${library || "(none)"}` },
     ];
     maxTokens = 4000;
   } else {
@@ -201,11 +202,11 @@ Deno.serve(async (req) => {
     const column = COLUMNS.find(([k]) => k === body.column);
     if (!column || !Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) return json(origin, 400, { error: "Pick a part of the plan to redo.", kind: "invalid" });
     const current = rows
-      .map((r: Record<string, unknown>, i: number) => `ROW ${i + 1}\n` + COLUMNS.map(([k, l]) => `${l}: ${cell(r?.[k], 2500) || "(empty)"}`).join("\n"))
+      .map((r: Record<string, unknown>, i: number) => `ROW ${i + 1}\n` + COLUMNS.map(([k, l]) => `${l}: ${redact(cell(r?.[k], 2500)) || "(empty)"}`).join("\n"))
       .join("\n\n");
     messages = [
       { role: "system", content: `${RULES}\n${writingStyle(me.id)}\n- Whatever the voice above, keep the level of a competent nursing student.\n\nTASK: rewrite ONLY the "${column[1]}" column of ROW ${rowIndex + 1}. Make it fresh, but fully consistent with the student's description and with every other column of the plan (same problem, diagnosis, goal, timeframes and objectives). Follow the format rules for that column exactly. Reply ONLY with JSON: {"text": "…"}` },
-      { role: "user", content: `STUDENT'S DESCRIPTION:\n${input}\n\nCURRENT PLAN:\n${current}\n\nLIBRARY TEXT:\n${library || "(none)"}` },
+      { role: "user", content: `STUDENT'S DESCRIPTION:\n${forAi}\n\nCURRENT PLAN:\n${current}\n\nLIBRARY TEXT:\n${library || "(none)"}` },
     ];
     maxTokens = 1500;
   }

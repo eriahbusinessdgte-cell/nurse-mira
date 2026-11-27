@@ -53,7 +53,6 @@ export function FncpMaker({ plans: initial, studentName, initialOpen, remaining:
   async function generate() {
     setError(null);
     if (input.trim().length < 10) return setError("Please describe the family problem or situation — a sentence or more.");
-    if (warnings.length) return setError("Remove the identifying details first.");
     setBusy(true);
     const r = await invoke({ action: "generate", input: input.trim() });
     setBusy(false);
@@ -123,8 +122,9 @@ export function FncpMaker({ plans: initial, studentName, initialOpen, remaining:
           <span className="ml-auto">{input.length}/6000</span>
         </div>
         {warnings.length > 0 && (
-          <p className="mt-2 flex items-start gap-1.5 text-xs text-mira-danger">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden /> {warnings.join(" ")}
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-800">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden /> Just so you know: {warnings.join(" ")} You can still generate — Nurse Mira
+            automatically leaves out phone numbers, ID or record numbers, emails and titled names before anything is sent to the AI.
           </p>
         )}
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -245,7 +245,6 @@ function PlanEditor({
   };
 
   async function regenerateAll() {
-    if (warnings.length) return setMessage({ ok: false, text: "Remove the identifying details from the situation first." });
     if (!confirm("Make a fresh version of the WHOLE plan from the situation above? Your current table (including your edits) will be replaced.")) return;
     if (timer.current) await persist();
     setWorking("all");
@@ -331,7 +330,7 @@ function PlanEditor({
           <span className="font-medium">Family problem or situation (your description)</span>
           <textarea value={doc.input} onChange={(e) => update({ ...doc, input: e.target.value.slice(0, 6000) })} rows={3} className={`${inputClass} mt-1`} />
         </label>
-        {warnings.length > 0 && <p className="mt-1 text-xs text-mira-danger">{warnings.join(" ")}</p>}
+        {warnings.length > 0 && <p className="mt-1 text-xs text-amber-800">Just so you know: {warnings.join(" ")} (Nurse Mira leaves these out automatically when it uses the AI.)</p>}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button type="button" onClick={regenerateAll} disabled={!!working} className={buttonClass("accent", "!py-2")}>
             {working === "all" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <RefreshCw size={16} aria-hidden />}

@@ -43,7 +43,7 @@ export function findIdentifiers(text: string): string[] {
     [/(\+63|\b0)9\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/, "A phone number."],
     [/\b(born|birth\s*date|birthday|date of birth|DOB|kapanganakan)\b[^.\n]{0,20}\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}/i, "An exact date of birth — the age is enough."],
     [/\b(born|birth\s*date|birthday|date of birth|DOB)\b[^.\n]{0,20}\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}/i, "An exact date of birth — the age is enough."],
-    [/\b(Brgy|Barangay|Purok|Sitio|Blk|Block|Lot|Subd|Subdivision)\.?\s+[A-Z0-9]/i, "An address — the town or province is enough, or leave it out."],
+    [/\b(Brgy|Barangay|Purok|Sitio|Blk|Block|Lot|Subd|Subdivision)\.?\s+(?!(health|nutrition|hall|captain|chairman|officials?|council|level|workers?|program|sanitation|clean|tanod|BHW|BNS)\b)[A-Z0-9]/i, "An address — the town or province is enough, or leave it out."],
     [/\b\d+\s+[A-Z][a-z]+\s+(Street|St\.|Avenue|Ave\.|Road|Rd\.)/, "A street address."],
     [/[\w.+-]+@[\w-]+\.[\w.]+/, "An email address."],
   ];
