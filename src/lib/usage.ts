@@ -48,6 +48,7 @@ export const TOOL_LABEL: Record<string, string> = {
   "case-draft": "Case study draft",
   ncp: "Care plans",
   "drug-study": "Drug studies",
+  fncp: "Family care plans",
   "read-page": "Handwriting reader",
   embed: "Library search setup",
   page: "A page",

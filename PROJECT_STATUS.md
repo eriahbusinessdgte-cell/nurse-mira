@@ -168,6 +168,9 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 ### Drug Study Maker (2026-11-12)
 - D-065: menu "Drug Studies"; `drug-study` function v1; table `drug_studies` (private, RLS like care plans); print at /print/drug; Word export. Self-test passed.
 
+### Family Nursing Care Plan Maker (2026-11-26)
+- D-067: menu "Family Care Plans"; `fncp` function v1; table `family_care_plans` (private); PDF via jsPDF + autotable; print at /print/fncp/[id]. Tests: simple + interconnected generation, one-cell rewrite, privacy (SQL as another student), PDF (Node + real browser download incl. edits), print layout, desktop and phone views. Not yet done by a real student account end-to-end in production.
+
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
 2. Invite the first real students. Final 6-point report.

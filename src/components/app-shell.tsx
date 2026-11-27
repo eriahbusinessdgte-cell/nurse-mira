@@ -15,6 +15,7 @@ import {
   Eraser,
   BookOpenText,
   Pill,
+  House,
   Activity,
   LayoutDashboard,
   Library,
@@ -50,6 +51,7 @@ const ICONS: Record<string, LucideIcon> = {
   Eraser,
   BookOpenText,
   Pill,
+  House,
   Activity,
   Settings,
 };
