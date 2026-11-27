@@ -33,7 +33,7 @@ const EXAMPLES = [
   "There is an open drainage in the community where mosquitoes are breeding. A family member is diabetic and has been bitten by mosquitoes. Connect the environmental problem with the patient's diabetes and focus on sanitation, preventing mosquito exposure and preventing skin complications. Include the family's involvement.",
 ];
 
-export function FncpMaker({ plans: initial, studentName, initialOpen, remaining: initialRemaining }: { plans: SavedPlan[]; studentName: string; initialOpen: string | null; remaining: number }) {
+export function FncpMaker({ plans: initial, initialOpen, remaining: initialRemaining }: { plans: SavedPlan[]; initialOpen: string | null; remaining: number }) {
   const [plans, setPlans] = useState(initial);
   const [openId, setOpenId] = useState<string | null>(initialOpen && initial.some((p) => p.id === initialOpen) ? initialOpen : null);
   const [input, setInput] = useState("");
@@ -69,7 +69,6 @@ export function FncpMaker({ plans: initial, studentName, initialOpen, remaining:
       <PlanEditor
         key={open.id}
         initial={open}
-        studentName={studentName}
         remaining={remaining}
         onRemaining={setRemaining}
         onChange={(p) => setPlans((l) => l.map((x) => (x.id === p.id ? p : x)))}
@@ -175,7 +174,6 @@ export function FncpMaker({ plans: initial, studentName, initialOpen, remaining:
 
 function PlanEditor({
   initial,
-  studentName,
   remaining,
   onRemaining,
   onChange,
@@ -183,7 +181,6 @@ function PlanEditor({
   onBack,
 }: {
   initial: SavedPlan;
-  studentName: string;
   remaining: number;
   onRemaining: (n: number) => void;
   onChange: (p: SavedPlan) => void;
@@ -276,11 +273,7 @@ function PlanEditor({
     if (timer.current) await persist();
     const [{ jsPDF }, { autoTable }, { buildFncpPdf }] = await Promise.all([import("jspdf"), import("jspdf-autotable"), import("@/lib/fncp/plan")]);
     const d = latest.current;
-    const pdf = buildFncpPdf(jsPDF, autoTable, d.plan, {
-      situation: d.input,
-      preparedBy: studentName ? `Nurse ${studentName}` : undefined,
-      date: new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }),
-    });
+    const pdf = buildFncpPdf(jsPDF, autoTable, d.plan);
     pdf.save(pdfFileName(d.title));
   }
 

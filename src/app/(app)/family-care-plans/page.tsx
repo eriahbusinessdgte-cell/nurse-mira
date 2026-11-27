@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { PageLoading } from "@/components/page-loading";
 import { manilaDay } from "@/lib/dates";
 import { normalizePlan } from "@/lib/fncp/plan";
-import { firstName } from "@/lib/greeting";
 import { requireStudent } from "@/lib/supabase/server";
 import { FncpMaker, type SavedPlan } from "./fncp-maker";
 
@@ -20,7 +19,6 @@ async function Plans({ searchParams }: PageProps<"/family-care-plans">) {
   return (
     <FncpMaker
       plans={((data ?? []) as SavedPlan[]).map((p) => ({ ...p, plan: normalizePlan(p.plan) }))}
-      studentName={firstName(profile.full_name, profile.preferred_name)}
       initialOpen={typeof open === "string" ? open : null}
       remaining={Math.max(0, limit - (usage?.answers ?? 0))}
     />

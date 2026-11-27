@@ -59,10 +59,8 @@ export function pdfSafe(s: string): string {
     .replace(/[^\x09\x0A\x0D\x20-\x7E -ÿ•]/g, "");
 }
 
-export type PdfMeta = { situation: string; preparedBy?: string; date?: string };
-
 /**
- * Builds the landscape PDF: title, the student's described situation, then the seven-column table.
+ * Builds the landscape PDF: the title, then the seven-column table (plain white header, black titles — Erika, 2026-11-26).
  * Long cells wrap and continue onto the next page; the column headers repeat on every page.
  * `jsPDF` and `autoTable` are passed in so this works in the browser and in tests.
  */
@@ -72,7 +70,6 @@ export function buildFncpPdf(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   autoTable: any,
   plan: FamilyPlan,
-  meta: PdfMeta,
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -80,23 +77,10 @@ export function buildFncpPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.text(DOC_TITLE, pageW / 2, 40, { align: "center" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  let y = 58;
-  const line = [meta.preparedBy ? `Prepared by: ${meta.preparedBy}` : "", meta.date ? `Date: ${meta.date}` : ""].filter(Boolean).join("     ");
-  if (line) {
-    doc.text(pdfSafe(line), margin, y);
-    y += 14;
-  }
-  if (meta.situation.trim()) {
-    const wrapped = doc.splitTextToSize(pdfSafe(`Situation: ${meta.situation.trim()}`), pageW - margin * 2);
-    doc.text(wrapped, margin, y);
-    y += wrapped.length * 11 + 6;
-  }
   const usable = pageW - margin * 2;
   const share = [0.13, 0.14, 0.15, 0.15, 0.17, 0.12, 0.14]; // column widths, close to the reference sample
   autoTable(doc, {
-    startY: y,
+    startY: 56,
     margin: { left: margin, right: margin, top: 36, bottom: 30 },
     head: [COLUMNS.map(([, label]) => label)],
     body: plan.rows.map((r) => COLUMNS.map(([k]) => pdfSafe(r[k].trim()))),
@@ -104,7 +88,7 @@ export function buildFncpPdf(
     showHead: "everyPage",
     rowPageBreak: "auto",
     styles: { font: "helvetica", fontSize: 8.5, cellPadding: 5, valign: "top", overflow: "linebreak", lineColor: [70, 70, 70], lineWidth: 0.6, textColor: [20, 20, 20] },
-    headStyles: { fillColor: [33, 72, 192], textColor: [255, 255, 255], fontStyle: "bold", halign: "center", valign: "middle", fontSize: 9 },
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold", halign: "center", valign: "middle", fontSize: 9, lineColor: [70, 70, 70], lineWidth: 0.6 },
     columnStyles: Object.fromEntries(share.map((s, i) => [i, { cellWidth: usable * s }])),
     didDrawPage: () => {
       const n = doc.getNumberOfPages();

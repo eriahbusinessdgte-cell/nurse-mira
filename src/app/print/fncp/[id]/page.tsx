@@ -12,7 +12,7 @@ async function PrintPlan({ params }: PageProps<"/print/fncp/[id]">) {
   const { id } = await params;
   const { data } = await supabase.from("family_care_plans").select("title, input, plan").eq("id", id).maybeSingle();
   if (!data) notFound();
-  return <FncpTable title={DOC_TITLE} situation={data.input} plan={normalizePlan(data.plan)} columns={COLUMNS.map(([k, l]) => [k, l])} printButton={<PrintButton />} />;
+  return <FncpTable title={DOC_TITLE} plan={normalizePlan(data.plan)} columns={COLUMNS.map(([k, l]) => [k, l])} printButton={<PrintButton />} />;
 }
 
 export default function Page(props: PageProps<"/print/fncp/[id]">) {
