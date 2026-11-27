@@ -16,6 +16,7 @@ import {
   BookOpenText,
   Pill,
   House,
+  Mic,
   Activity,
   LayoutDashboard,
   Library,
@@ -52,6 +53,7 @@ const ICONS: Record<string, LucideIcon> = {
   BookOpenText,
   Pill,
   House,
+  Mic,
   Activity,
   Settings,
 };

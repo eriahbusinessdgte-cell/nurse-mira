@@ -171,6 +171,22 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 ### Family Nursing Care Plan Maker (2026-11-26)
 - D-067: menu "Family Care Plans"; `fncp` function v1; table `family_care_plans` (private); PDF via jsPDF + autotable; print at /print/fncp/[id]. Tests: simple + interconnected generation, one-cell rewrite, privacy (SQL as another student), PDF (Node + real browser download incl. edits), print layout, desktop and phone views. Not yet done by a real student account end-to-end in production.
 
+### Oral Revalida Practice + AI Tutor upgrade (2026-11-27)
+- D-070 Oral Revalida: menu "Oral Revalida" (/revalida, /revalida/[id], /revalida/review). `revalida` function; tables `revalida_cases`, `revalida_sessions`, `revalida_questions` (own-only). D-071 Tutor: do-the-task instructions, longer answers when needed, conversation memory budget, file attach, copy, welcome message (tutor v18+). Backups include the new tables (backup v5).
+- Tested live (real AI, test account "Erika Angel" student): see the completion report in the chat of 2026-11-27 and the list below.
+  - Revalida: pasted case → 20/20 questions (all flashcard types incl. MCQ, T/F, identification, open, situational, judgment, NCP and medication defense); slightly edited paste recognised as the same case (revision 2); second session 20/20 different questions; third session (instructor-level) for the same case — many candidates rejected as repeats of sessions 1–2 (logged reasons: same meaning 0.90–0.95, reworded repeat, same concept and skill).
+  - Flashcard screen (real browser, desktop + phone): 28/29 checks (the 1 was a test-script capitalisation issue), including reveal/hide, next/previous/skip, jump strip, bookmark, self-check, MCQ answer hidden until reveal, summary with no score, review filters, unsaved-progress warning.
+  - Start screen: Word upload read, too-short and unsupported files explained, paste too short blocked before any AI, options, phone layout — 12/12.
+  - Privacy (database rules, as a second student): 0 of the first student's cases, sessions, questions, chats, messages; 0 rows changed/deleted. Owner can change only state columns.
+  - Saving/resume: reveal/skip/bookmark/self-check/position saved and read back after "refresh".
+  - Tutor: introduction written (after a fix, without inventing a patient), "make it longer", "add …", "three objectives for this case" all used the same chat; failure / retry / attach / copy / new chat in a real browser 14/14.
+  - Repeat-check gap found and fixed: checking only the single closest earlier question let "shoulder-tip pain" through in all 3 sessions (different formats). Now every earlier question is compared; thresholds calibrated on the 18 closest real pairs (0.89 meaning similarity, or 0.87 + same angle/many shared words). Session 4 then rejected the remaining repeats (ketorolac 0.93, shock class 0.92, saline vs Ringer's 0.90).
+  - Saved Case Study as the source (pneumonia test case): questions used its own findings, orders and the student's NCP section; chosen types respected.
+  - Tutor E–H: simple explanation, comprehensive reviewer (≈ 9,800 characters, via Cloudflare), summary of an attached file (only its contents), improved a weak NCP.
+- Temporary test hooks (functions) removed and checked (401); the two SQL test helpers were turned into no-ops (safe to remove later); test pages removed.
+- Test data left in the "Erika Angel" test student account: 5 revalida sessions (ectopic + pneumonia cases), a test case study "TEST – Community-acquired pneumonia", ~8 tutor chats. Safe to delete.
+- Not yet done with a real student login in production (same as FNCP).
+
 ### Next
 1. Textbook import (Erika chose "before inviting"): admin-only "Add textbook (text only)" for large open textbooks (OpenStax, CC BY) — text and page numbers saved with attribution, original PDF not stored; then load 2–3 books Erika downloads.
 2. Invite the first real students. Final 6-point report.

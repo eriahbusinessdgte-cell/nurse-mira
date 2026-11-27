@@ -36,6 +36,12 @@ Next.js server routes (Vercel)         ← checks login and role on every reques
 - **Portability.** Plain Postgres + files. The admin backup download exports every table as JSON/CSV
   and the library's original files.
 
+## Oral Revalida and the upgraded tutor (D-070, D-071)
+
+- `revalida` Edge Function: `start` (find/create the case + revision, create a new session — no AI) and `batch` (5 questions per AI answer → repeat checks → save). Repeat checks run in code against all earlier questions for that student + case: normalised text, word overlap, concept + skill, self-containment, gte-small meaning similarity via `revalida_nearest()` (service-only SQL function), and similarity + same category + same skill. Bounded retries; honest shortfall note. A short lock (`generating_until`) stops two tabs generating at once.
+- Screens: `/revalida` (start + history), `/revalida/[id]` (flashcards, summary), `/revalida/review?filter=bookmarked|difficult` (across sessions). Card state is written straight to the database (column-limited grants) as the student taps.
+- `tutor` Edge Function: newest-first conversation history within a character budget; optional attached-file text; answer room 1,800 / 3,200 / 6,000 tokens for questions / tasks / long tasks; requests too big for Groq's per-minute limit go straight to Cloudflare.
+
 ## Free-tier limits (checked November 2026)
 
 | Service | Limit |

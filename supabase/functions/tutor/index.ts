@@ -9,7 +9,7 @@
 // then Groq's smaller model → save both messages →
 // keep a short study summary for "Continue Studying".
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { asksAboutPastStudy, isSafetyTopic, summaryPrompt, systemPrompt, type Source } from "./prompt.ts";
+import { asksAboutPastStudy, isLongTask, isSafetyTopic, isTask, summaryPrompt, systemPrompt, type Source } from "./prompt.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -23,6 +23,13 @@ const CF_DAILY_LIMIT = 9700; // free allowance is 10,000 neurons a day; keep a s
 const MAIN_MODEL = "openai/gpt-oss-120b";
 const BACKUP_MODEL = "openai/gpt-oss-20b";
 const YEAR = ["", "First Year", "Second Year", "Third Year", "Fourth Year"];
+
+// Groq's free plan allows 8,000 tokens per minute, counting the question AND the room reserved for the
+// answer — one request bigger than that is refused. Rough token estimate: ~3.6 characters per token.
+const GROQ_TPM = 7800;
+const est = (msgs: ChatMessage[]) => Math.ceil(msgs.reduce((n, m) => n + m.content.length + 12, 0) / 3.6);
+const HISTORY_CHARS = 12000; // how much of the earlier chat is sent (newest first)
+const ATTACH_CHARS = 12000; // how much of an attached file is read
 
 // deno-lint-ignore no-explicit-any
 const embedder = new (globalThis as any).Supabase.ai.Session("gte-small");
@@ -54,7 +61,7 @@ async function groq(model: string, messages: ChatMessage[], opts: { maxTokens: n
     method: "POST",
     headers: { Authorization: `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(110_000),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -81,7 +88,7 @@ async function cloudflare(db: any, messages: ChatMessage[], maxTokens: number) {
     method: "POST",
     headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: CF_MODEL, messages, max_tokens: maxTokens, temperature: 0.4, reasoning_effort: "low" }),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(110_000),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -99,22 +106,27 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(origin) });
   if (req.method !== "POST") return json(origin, 405, { error: "Method not allowed.", kind: "invalid" });
 
-  // 1. Who is asking?
-  const asCaller = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } });
-  const { data: who } = await asCaller.auth.getUser();
-  if (!who?.user) return json(origin, 401, { error: "Please sign in again.", kind: "invalid" });
-  const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-  const { data: me } = await db.from("profiles").select("id, full_name, preferred_name, role, is_active, year_level").eq("id", who.user.id).single();
-  if (!me?.is_active) return json(origin, 403, { error: "Your account is turned off.", kind: "invalid" });
-
-  let body: { conversation_id?: string; message?: string; mode?: string; subject_id?: string | null };
+  let body: { conversation_id?: string; message?: string; mode?: string; subject_id?: string | null; attachment?: { name?: string; text?: string } | null };
   try {
     body = await req.json();
   } catch {
     return json(origin, 400, { error: "The request was not readable.", kind: "invalid" });
   }
-  const question = String(body.message ?? "").trim().slice(0, 4000);
+
+  // 1. Who is asking?
+  const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+  const asCaller = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } });
+  const { data: who } = await asCaller.auth.getUser();
+  if (!who?.user) return json(origin, 401, { error: "Please sign in again.", kind: "invalid" });
+  const { data: me } = await db.from("profiles").select("id, full_name, preferred_name, role, is_active, year_level").eq("id", who.user.id).single();
+  if (!me?.is_active) return json(origin, 403, { error: "Your account is turned off.", kind: "invalid" });
+  const question = String(body.message ?? "").trim().slice(0, 8000);
   if (!question) return json(origin, 400, { error: "Please type a question.", kind: "invalid" });
+  const attachment = body.attachment && String(body.attachment.text ?? "").trim()
+    ? { name: String(body.attachment.name ?? "file").slice(0, 200), text: String(body.attachment.text).replace(/\r/g, "").trim().slice(0, 20000) }
+    : null;
+  const task = isTask(question) || !!attachment;
+  const long = isLongTask(question);
   const mode = body.mode === "clinical" ? "clinical" : "tea";
 
   // 2. Daily limit (the admin isn't limited).
@@ -152,15 +164,42 @@ Deno.serve(async (req) => {
   }
 
   // 4. Earlier messages in this conversation + study history from other sessions.
+  // Newest first, within a character budget, so "make it longer" always has the latest output in full.
+  // The most recent attached file in the chat is included too. Older messages that don't fit are left out
+  // and the AI is told so (it must not pretend to remember them).
   const recent: ChatMessage[] = [];
+  let earlierHidden = false;
   if (conversation) {
     const { data: msgs } = await db
       .from("messages")
-      .select("role, content")
+      .select("role, content, attachment_name, attachment_text")
       .eq("conversation_id", conversation.id)
       .order("id", { ascending: false })
-      .limit(8);
-    for (const m of (msgs ?? []).reverse()) recent.push({ role: m.role, content: String(m.content).slice(0, 3000) });
+      .limit(30);
+    let budget = HISTORY_CHARS;
+    let fileIncluded = !!attachment;
+    const picked: ChatMessage[] = [];
+    for (const [i, m] of (msgs ?? []).entries()) {
+      let content = String(m.content);
+      if (m.attachment_text && !fileIncluded) {
+        content += `\n\nATTACHED FILE "${m.attachment_name ?? "file"}":\n${String(m.attachment_text).slice(0, Math.min(ATTACH_CHARS, Math.max(2000, budget - 2000)))}`;
+        fileIncluded = true;
+      }
+      const room = i < 2 ? Math.min(budget, 9000) : Math.min(budget, 2500);
+      if (room < 300) {
+        earlierHidden = true;
+        break;
+      }
+      if (content.length > room) content = content.slice(0, room) + " …[cut]";
+      picked.push({ role: m.role, content });
+      budget -= content.length;
+    }
+    if (!earlierHidden && (msgs?.length ?? 0) >= 30) earlierHidden = true;
+    recent.push(...picked.reverse());
+    if (earlierHidden) {
+      recent.unshift({ role: "user", content: `(Earlier messages of this long chat aren't shown.${conversation.summary ? ` Summary of the chat so far: ${conversation.summary}` : ""})` });
+      recent.splice(1, 0, { role: "assistant", content: "Okay." });
+    }
   }
   const { data: past } = await db
     .from("conversations")
@@ -176,7 +215,9 @@ Deno.serve(async (req) => {
   // 5. Search the shared library.
   let sources: Source[] = [];
   try {
-    const searchText = recent.length ? `${recent.filter((m) => m.role === "user").slice(-1)[0]?.content ?? ""}\n${question}` : question;
+    const searchText = attachment
+      ? `${question}\n${attachment.text.slice(0, 1000)}`
+      : recent.length ? `${recent.filter((m) => m.role === "user").slice(-1)[0]?.content.slice(0, 600) ?? ""}\n${question}` : question;
     const embedding = await embedder.run(searchText.slice(0, 1500), { mean_pool: true, normalize: true });
     const { data: hits } = await db.rpc("search_library", {
       query_embedding: JSON.stringify(embedding),
@@ -188,7 +229,8 @@ Deno.serve(async (req) => {
       // gte-small scores unrelated text around 0.80, so a strong score is needed — unless the page
       // actually contains a distinctive word from the question (e.g. a drug name like "zidovudine").
       .filter((h) => h.score >= 0.85 || (h.score >= 0.8 && keyTerms(question).some((t) => h.content.toLowerCase().includes(t))))
-      .slice(0, 5)
+      .slice(0, task ? 3 : 5)
+      .map((h) => (task ? { ...h, content: h.content.slice(0, 1400) } : h))
       .map((h, i) => ({ n: i + 1, title: h.title, page: h.page_number, source_type: h.source_type, status: h.status, content: h.content, document_id: h.document_id }) as Source & { document_id: string });
   } catch (e) {
     console.error("library search failed", e);
@@ -205,16 +247,31 @@ Deno.serve(async (req) => {
     // Past-session summaries only when the student asks about their own past study.
     history: asksAboutPastStudy(question) ? history : "",
     sources,
+    task,
+    attachment: !!attachment,
   });
-  const chat: ChatMessage[] = [{ role: "system", content: system }, ...recent, { role: "user", content: question }];
+  // For writing tasks, a reminder right next to the request (the AI follows the nearest instruction best):
+  // tested — without it, "create an introduction for our case study" got an invented patient (age, G/P, weeks).
+  const reminder = task
+    ? "\n\n(Nurse Mira reminder, not from the student: do the task fully. Use only patient/case details the student actually gave in this chat — if none were given, don't invent an age, G/P, gestational age, findings or treatments; keep it general or use [placeholders].)"
+    : "";
+  const userTurn = (attachment ? `${question}\n\nATTACHED FILE "${attachment.name}"${attachment.text.length > ATTACH_CHARS ? " (only the first part could be read)" : ""}:\n${attachment.text.slice(0, ATTACH_CHARS)}` : question) + reminder;
+  const chat: ChatMessage[] = [{ role: "system", content: system }, ...recent, { role: "user", content: userTurn }];
+
+  // Room for the answer: a normal reply, a writing task, or a long output (reviewer, 20 questions…).
+  const wanted = long ? 6000 : task ? 3200 : 1800;
+  const inputTokens = est(chat);
+  const groqRoom = Math.min(wanted, GROQ_TPM - inputTokens);
+  // If the request is too big for Groq's free per-minute allowance, go straight to Cloudflare (same model).
+  const groqFits = groqRoom >= Math.min(wanted, 1500);
 
   let answer = "";
   let model = MAIN_MODEL;
   let provider = "groq";
   const attempts: { provider: string; model: string; run: () => Promise<string> }[] = [
-    { provider: "groq", model: MAIN_MODEL, run: () => groq(MAIN_MODEL, chat, { maxTokens: 1800 }) },
-    { provider: "cloudflare", model: CF_MODEL, run: () => cloudflare(db, chat, 1800) },
-    { provider: "groq", model: BACKUP_MODEL, run: () => groq(BACKUP_MODEL, chat, { maxTokens: 1600 }) },
+    ...(groqFits ? [{ provider: "groq", model: MAIN_MODEL, run: () => groq(MAIN_MODEL, chat, { maxTokens: groqRoom }) }] : []),
+    { provider: "cloudflare", model: CF_MODEL, run: () => cloudflare(db, chat, wanted) },
+    ...(groqFits ? [{ provider: "groq", model: BACKUP_MODEL, run: () => groq(BACKUP_MODEL, chat, { maxTokens: groqRoom }) }] : []),
   ];
   let lastStatus: number | undefined;
   for (const a of attempts) {
@@ -238,6 +295,9 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Some models write citations as 【S1】 — turn them into [S1] so the screen shows them as source tags.
+  answer = answer.replace(/【\s*S(\d{1,2})[^】]*】/g, "[S$1]");
+
   // Keep only the sources the answer actually cited.
   const cited = new Set([...answer.matchAll(/\[?\bS(\d{1,2})\b\]?/g)].map((m) => Number(m[1])));
   const usedSources = (sources as (Source & { document_id: string })[])
@@ -251,13 +311,13 @@ Deno.serve(async (req) => {
           .map((s) => ({ n: s.n, document_id: s.document_id, title: s.title, page: s.page, source_type: s.source_type, status: s.status, related: true }))
       : [];
   // Nothing in the library matched: make sure the student is told, even if the AI forgot to say so.
-  if (sources.length === 0 && !/library/i.test(answer.slice(0, 300))) {
+  if (sources.length === 0 && !task && !/library/i.test(answer.slice(0, 300))) {
     answer = `_This topic isn't in the Nurse Mira library yet, so this answer is from general nursing knowledge._\n\n${answer}`;
   }
 
   // 7. Save.
   if (!conversation) {
-    const title = question.replace(/\s+/g, " ").slice(0, 70) + (question.length > 70 ? "…" : "");
+    const title = (question.replace(/\s+/g, " ").slice(0, 70) + (question.length > 70 ? "…" : "")) || attachment?.name || "New chat";
     const { data: created, error } = await db
       .from("conversations")
       .insert({ student_id: me.id, title, mode, subject_id: subjectId })
@@ -267,7 +327,8 @@ Deno.serve(async (req) => {
     conversation = created;
   }
   const conv = conversation!;
-  await db.from("messages").insert({ conversation_id: conv.id, role: "user", content: question, mode });
+  const { error: userSaveError } = await db.from("messages").insert({ conversation_id: conv.id, role: "user", content: question, mode, attachment_name: attachment?.name ?? null, attachment_text: attachment?.text ?? null });
+  if (userSaveError) console.error("user message save failed", userSaveError.message);
   const { data: saved } = await db
     .from("messages")
     .insert({ conversation_id: conv.id, role: "assistant", content: answer, sources: [...usedSources, ...relatedSources], mode, provider, model, safety_mode: safety })

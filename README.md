@@ -6,9 +6,10 @@ Product owner and administrator: Erika Angel Perez.
 
 ## What it does
 
-- AI Tutor (Tea Mode and Clinical Mode) that answers from a shared library of reviewers, with sources
+- AI Tutor that does the task you ask (writes, creates reviewers and questions, revises, summarizes attached files, explains), with sources from the shared library and saved chats
+- Oral Revalida Practice: case-based clinical-instructor questions as flashcards, saved sessions, no repeated questions across sessions
 - Review Center, Quizzes & Exams, Flashcards
-- Nursing Case Study Builder and Nursing Care Plan (NCP) Builder
+- Nursing Case Study Builder, Nursing Care Plan (NCP) Builder, Family Care Plan Maker and Drug Study Maker
 - Academic Planner
 - Admin area for students, curriculum, the shared library and storage
 

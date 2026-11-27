@@ -13,3 +13,31 @@ test("ordinary questions don't", () => {
     assert.equal(asksAboutPastStudy(q), false, q);
   }
 });
+
+import { isLongTask, isTask } from "../supabase/functions/tutor/prompt.ts";
+
+test("requests to produce or change something are tasks", () => {
+  for (const q of [
+    "Create an introduction for our case study about ectopic pregnancy.",
+    "Make it longer.",
+    "Add the importance of nursing management.",
+    "Now create three objectives for this case.",
+    "Summarize this PDF",
+    "Improve this NCP",
+    "Make this more academic",
+    "Correct the grammar",
+    "Create 20 questions with answers and rationales.",
+    "How can you make my reflection sound more natural?",
+  ]) assert.ok(isTask(q), q);
+});
+
+test("plain questions aren't tasks", () => {
+  for (const q of ["Explain ectopic pregnancy in simple terms.".replace("Explain", "What is"), "What is the correct dose of paracetamol?", "Why is answer B correct?", "Is furosemide a loop diuretic?"]) {
+    assert.equal(isTask(q), false, q);
+  }
+});
+
+test("long outputs get more room", () => {
+  for (const q of ["Create a comprehensive reviewer about ectopic pregnancy", "Create 30 questions with answers and rationales", "Make it longer.", "Write a presentation script"]) assert.ok(isLongTask(q), q);
+  assert.equal(isLongTask("Create an introduction for our case study"), false);
+});

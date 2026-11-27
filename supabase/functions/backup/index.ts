@@ -54,6 +54,16 @@ const TABLES: Record<string, Spec> = {
   care_plans: { key: ["id"], order: "id" },
   drug_studies: { key: ["id"], order: "id" },
   family_care_plans: { key: ["id"], order: "id" },
+  revalida_cases: { key: ["id"], order: "id" },
+  revalida_sessions: { key: ["id"], order: "id" },
+  // The meaning fingerprint (embedding) isn't backed up; restored questions still count for the
+  // wording and concept repeat checks, just not the meaning-similarity one.
+  revalida_questions: {
+    key: ["id"],
+    omit: ["embedding"],
+    select: "id, session_id, student_id, case_id, position, qtype, category, concept, scenario, skill, difficulty, hypothetical, question, options, answer_index, answer, key_points, rationale, case_link, norm_text, revealed, skipped, bookmarked, self_assess, viewed, created_at",
+    order: "id",
+  },
   planner_items: { key: ["id"], order: "id" },
   cloudflare_usage: { key: ["day"], order: "day" },
 };

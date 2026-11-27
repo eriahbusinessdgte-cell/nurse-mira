@@ -25,6 +25,9 @@ export const TABLE_ORDER = [
   "care_plans",
   "drug_studies",
   "family_care_plans",
+  "revalida_cases",
+  "revalida_sessions",
+  "revalida_questions",
   "planner_items",
   "cloudflare_usage",
 ] as const;
@@ -49,6 +52,9 @@ export const TABLE_LABEL: Record<TableName, string> = {
   care_plans: "Nursing care plans",
   drug_studies: "Drug studies",
   family_care_plans: "Family care plans",
+  revalida_cases: "Oral revalida cases",
+  revalida_sessions: "Oral revalida sessions",
+  revalida_questions: "Oral revalida questions",
   planner_items: "Planner items",
   cloudflare_usage: "Page-reading usage",
 };

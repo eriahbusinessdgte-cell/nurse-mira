@@ -21,6 +21,11 @@ import {
   X,
   Bookmark,
   BookmarkCheck,
+  Check,
+  Copy,
+  FileText,
+  Loader2,
+  Paperclip,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { problemKind, reportProblem } from "@/lib/report-problem";
@@ -28,6 +33,10 @@ import { sourceLabel } from "@/lib/library/labels";
 import { englishVoices, saveVoiceName, savedVoiceName, speakPieces, toSpeech } from "@/lib/tutor/voice";
 import { deleteConversation, setKept } from "./actions";
 import { CHAT_KEEP_DAYS, expiryLabel } from "@/lib/tutor/expiry";
+import { ACCEPT_ATTR, extractText } from "@/lib/library/extract";
+
+/** How much of an attached file Nurse Mira reads (free-AI limits). Matches the tutor function. */
+const ATTACH_READ_CHARS = 12000;
 
 export type ConversationItem = {
   id: string;
@@ -48,6 +57,7 @@ export type ChatMessage = {
   mode: "tea" | "clinical" | null;
   safety_mode: boolean;
   created_at: string;
+  attachment_name?: string | null;
 };
 type Subject = { id: string; code: string; title: string };
 
@@ -80,6 +90,16 @@ const when = (iso: string) => new Date(iso).toLocaleDateString("en-PH", { month:
 const withCitationLinks = (text: string) => text.replace(/\[S(\d{1,2})\]/g, "[S$1](#source-$1)");
 
 function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking: boolean; onSpeak: () => void }) {
+  const [copied, setCopied] = useState<"yes" | "no" | null>(null);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(message.content.replace(/\s?\[S\d{1,2}\]/g, "").replace(/^_This topic isn't in the Nurse Mira library yet[^\n]*\n+/, ""));
+      setCopied("yes");
+    } catch {
+      setCopied("no");
+    }
+    setTimeout(() => setCopied(null), 2000);
+  }
   return (
     <div className="max-w-3xl rounded-2xl rounded-tl-sm bg-white p-4 shadow-sm ring-1 ring-mira-line">
       {message.safety_mode && (
@@ -125,7 +145,15 @@ function Answer({ message, speaking, onSpeak }: { message: ChatMessage; speaking
           </ul>
         </div>
       )}
-      <div className="mt-2 flex justify-end">
+      <div className="mt-2 flex justify-end gap-1">
+        <button
+          type="button"
+          onClick={copy}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-mira-muted hover:bg-mira-page hover:text-mira-ink"
+          aria-label="Copy this answer"
+        >
+          {copied === "yes" ? <Check size={15} /> : <Copy size={15} />} {copied === "yes" ? "Copied" : copied === "no" ? "Couldn't copy" : "Copy"}
+        </button>
         <button
           type="button"
           onClick={onSpeak}
@@ -147,6 +175,8 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   const [mode, setMode] = useState<"tea" | "clinical">(active?.mode ?? defaultMode);
   const [subjectId, setSubjectId] = useState<string>(active?.subject_id ?? "");
   const [input, setInput] = useState(initialQuestion);
+  const [attachment, setAttachment] = useState<{ name: string; text: string; cut: boolean } | null>(null);
+  const [reading, setReading] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [banner, setBanner] = useState<{ kind: "limit" | "unavailable" | "error"; text: string; retry?: string } | null>(null);
   const [remaining, setRemaining] = useState(initialRemaining);
@@ -192,24 +222,46 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, sending]);
 
+  async function attach(file: File) {
+    setBanner(null);
+    setReading("Reading the file…");
+    try {
+      const out = await extractText(file, (m) => setReading(m));
+      const text = out.pages.map((p) => p.text).join("\n\n").trim();
+      if (text.replace(/\s/g, "").length < 40) {
+        setBanner({ kind: "error", text: "Nurse Mira couldn't read any text in that file. Try a clearer file, or paste the text into the message box." });
+      } else {
+        setAttachment({ name: file.name, text: text.slice(0, 20000), cut: text.length > ATTACH_READ_CHARS });
+        inputRef.current?.focus();
+      }
+    } catch (e) {
+      setBanner({ kind: "error", text: e instanceof Error && e.message ? e.message : "That file couldn't be read. Try another file, or paste the text instead." });
+    }
+    setReading(null);
+  }
+
   async function send(text?: string) {
-    const question = (text ?? input).trim();
-    if (!question || sending) return;
+    const question = (text ?? input).trim() || (attachment ? "Summarize this file." : "");
+    if (!question || sending || reading) return;
+    const file = attachment;
     setBanner(null);
     setSending(true);
     tempCounter.current += 1;
-    const temp: ChatMessage = { id: `tmp-${tempCounter.current}`, role: "user", content: question, sources: [], mode, safety_mode: false, created_at: "" };
+    const temp: ChatMessage = { id: `tmp-${tempCounter.current}`, role: "user", content: question, sources: [], mode, safety_mode: false, created_at: "", attachment_name: file?.name ?? null };
     setMessages((m) => [...m, temp]);
     setInput("");
+    setAttachment(null);
 
     const { data, error } = await createClient().functions.invoke("tutor", {
-      body: { conversation_id: conversationId, message: question, mode, subject_id: subjectId || null },
+      body: { conversation_id: conversationId, message: question, mode, subject_id: subjectId || null, attachment: file ? { name: file.name, text: file.text } : null },
     });
     setSending(false);
 
     if (error || !data || data.error) {
+      // Nothing is lost: the message and the attached file go back into the box.
       setMessages((m) => m.filter((x) => x.id !== temp.id));
       setInput(question);
+      setAttachment(file);
       let kind: "limit" | "unavailable" | "error" = "error";
       let text = "Something went wrong. Please try again.";
       if (data?.error) {
@@ -231,6 +283,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
     }
 
     setMessages((m) => [...m, data.message as ChatMessage]);
+    if (data.conversation_id) setConversationId(data.conversation_id);
     if (typeof data.remaining === "number") setRemaining(data.remaining);
     if (!conversationId) {
       const newTitle = question.replace(/\s+/g, " ").slice(0, 70) + (question.length > 70 ? "…" : "");
@@ -311,6 +364,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
     setMode(defaultMode);
     setSubjectId("");
     setInput("");
+    setAttachment(null);
     setBanner(null);
     setHistoryOpen(false);
     if (window.location.pathname !== "/tutor" || window.location.search) {
@@ -319,10 +373,12 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   }
 
   const suggestions = [
-    "Where did we leave off?",
+    "Create an introduction for our case study about ectopic pregnancy",
+    "Make me a reviewer about cardiovascular diseases",
     "Explain heart failure and edema in simple terms",
-    subjectId ? `Quiz me with 3 questions on ${subjects.find((s) => s.id === subjectId)?.title}` : "Give me 3 practice questions on my current subjects",
-    "Do a short mock oral recitation with me",
+    subjectId ? `Create 10 questions with answers and rationales on ${subjects.find((s) => s.id === subjectId)?.title}` : "Create 10 questions with answers and rationales on my current subjects",
+    "Help me prepare for my oral revalida",
+    "Where did we leave off?",
   ];
 
   function toggleKeep(c: ConversationItem) {
@@ -338,7 +394,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
   const historyPanel = (
     <div className="flex h-full flex-col">
       <button type="button" onClick={newConversation} className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-mira-yellow px-3 py-2.5 text-sm font-medium text-mira-blue-dark hover:bg-mira-yellow-dark">
-        <Plus size={16} aria-hidden /> New conversation
+        <Plus size={16} aria-hidden /> New chat
       </button>
       <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-mira-muted">Saved conversations</p>
       {list.length > 0 && (
@@ -384,7 +440,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                     }
                   })
                 }
-                className="mt-1 rounded p-1.5 text-mira-muted opacity-0 hover:bg-red-50 hover:text-mira-danger focus:opacity-100 group-hover:opacity-100"
+                className="mt-1 rounded p-1.5 text-mira-muted hover:bg-red-50 hover:text-mira-danger focus:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 aria-label={`Delete ${c.title}`}
               >
                 <Trash2 size={14} />
@@ -519,11 +575,12 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
             {messages.length === 0 && (
               <div className="py-6 text-center">
                 <Mira pose="hello" height={150} className="mx-auto mb-3" priority />
-                <h2 className="text-xl font-semibold">Hi Nurse {studentName}! What shall we study?</h2>
-                <p className="mx-auto mt-2 max-w-md text-sm text-mira-muted">
-                  Ask anything about your nursing subjects. Nurse Mira answers from the shared library when it can and shows its sources.
-                  {mode === "tea" ? " You're in Tea Mode — friendly and relaxed." : " You're in Clinical Mode — formal and exam-ready."}
+                <h2 className="text-xl font-semibold">Hi{studentName ? ` ${studentName}` : ""}! I&apos;m Nurse Mira. What are you working on today?</h2>
+                <p className="mx-auto mt-2 max-w-lg text-sm text-mira-muted">
+                  You can ask me nursing questions, create reviewers, work on case studies, improve assignments, prepare for exams, or ask me to explain anything
+                  you&apos;re studying. Just tell me what you need — you can also attach a file with the <Paperclip size={13} className="inline" aria-label="paperclip" /> button.
                 </p>
+                <p className="mx-auto mt-1 max-w-md text-xs text-mira-muted">{mode === "tea" ? "Style: Tea Mode — friendly and relaxed." : "Style: Clinical — formal and exam-ready."} Answers use the shared library when it can and show their sources.</p>
                 <div className="mt-5 flex flex-wrap justify-center gap-2">
                   {suggestions.map((s) => (
                     <button key={s} type="button" onClick={() => send(s)} disabled={sending || remaining === 0} className="rounded-full bg-white px-3 py-2 text-sm ring-1 ring-mira-line hover:ring-mira-blue disabled:opacity-50">
@@ -536,7 +593,12 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
 
             {messages.map((m) =>
               m.role === "user" ? (
-                <div key={m.id} className="flex justify-end">
+                <div key={m.id} className="flex flex-col items-end gap-1">
+                  {m.attachment_name && (
+                    <span className="flex max-w-[85%] items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs text-mira-muted ring-1 ring-mira-line">
+                      <FileText size={14} aria-hidden /> {m.attachment_name}
+                    </span>
+                  )}
                   <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-mira-blue px-4 py-3 text-sm text-white">{m.content}</p>
                 </div>
               ) : (
@@ -555,7 +617,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                   <span className="h-2 w-2 animate-bounce rounded-full bg-mira-blue [animation-delay:-0.15s]" />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-mira-blue" />
                 </span>
-                Nurse Mira is checking the library and thinking…
+                Nurse Mira is working on it… (longer tasks like reviewers can take up to a minute)
               </div>
             )}
             <div ref={endRef} />
@@ -579,6 +641,26 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                 )}
               </div>
             )}
+            {(attachment || reading) && (
+              <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-mira-page px-3 py-2 text-sm">
+                {reading ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" aria-hidden /> {reading}
+                  </>
+                ) : (
+                  attachment && (
+                    <>
+                      <FileText size={15} aria-hidden />
+                      <span className="min-w-0 flex-1 truncate font-medium">{attachment.name}</span>
+                      <span className="text-xs text-mira-muted">{attachment.cut ? `Only the first part (about ${Math.round(ATTACH_READ_CHARS / 2000)} pages) can be read` : "Ready — Nurse Mira will read it"}</span>
+                      <button type="button" onClick={() => setAttachment(null)} className="rounded p-1 text-mira-muted hover:bg-white" aria-label="Remove the attached file">
+                        <X size={15} />
+                      </button>
+                    </>
+                  )
+                )}
+              </div>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -597,11 +679,28 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
                   }
                 }}
                 rows={1}
-                maxLength={4000}
-                placeholder={remaining === 0 ? "No answers left today — they reset at midnight" : "Ask Nurse Mira a nursing question…"}
-                aria-label="Your question"
+                maxLength={8000}
+                placeholder={remaining === 0 ? "No answers left today — they reset at midnight" : attachment ? "What should Nurse Mira do with this file? (e.g. summarize it)" : "Ask a question or tell Nurse Mira what you need…"}
+                aria-label="Your message"
                 className="max-h-40 min-h-[44px] flex-1 resize-y rounded-xl border border-mira-line px-3 py-2.5 text-sm outline-none focus:border-mira-blue focus:ring-2 focus:ring-mira-blue/20"
               />
+              <label
+                className={`flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white text-mira-muted ring-1 ring-mira-line hover:text-mira-ink ${sending || reading ? "pointer-events-none opacity-50" : ""}`}
+                title="Attach a file (PDF, Word, PowerPoint, text or photo)"
+              >
+                <Paperclip size={19} aria-hidden />
+                <span className="sr-only">Attach a file</span>
+                <input
+                  type="file"
+                  accept={ACCEPT_ATTR}
+                  className="sr-only"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) void attach(f);
+                  }}
+                />
+              </label>
               {voiceSupported.mic && (
                 <button
                   type="button"
@@ -615,7 +714,7 @@ export function TutorChat({ conversations, active, initialMessages, subjects, re
               )}
               <button
                 type="submit"
-                disabled={!input.trim() || sending || remaining === 0}
+                disabled={(!input.trim() && !attachment) || sending || !!reading || remaining === 0}
                 className="flex h-11 w-11 items-center justify-center rounded-xl bg-mira-blue text-white hover:bg-mira-blue-dark disabled:opacity-50"
                 aria-label="Send"
               >

@@ -27,7 +27,7 @@ async function Tutor({ searchParams }: PageProps<"/tutor">) {
   if (active) {
     const { data } = await supabase
       .from("messages")
-      .select("id, role, content, sources, mode, safety_mode, created_at")
+      .select("id, role, content, sources, mode, safety_mode, created_at, attachment_name")
       .eq("conversation_id", active.id)
       .order("id");
     messages = (data ?? []) as ChatMessage[];

@@ -10,6 +10,12 @@
 - **Patient privacy:** case studies and care plans require the de-identification confirmation, and identifiers (names, hospital numbers, phone numbers, etc.) are blocked before anything is sent to the AI.
 - **Backups:** locked with the admin's own password (AES-256); the app has no screen for reading them.
 
+## Oral Revalida and tutor upgrade (2026-11-27)
+- New tables `revalida_cases`, `revalida_sessions`, `revalida_questions`: row-level security on, owner-only. Tested as a second student: 0 cases, sessions, questions, chats or chat messages of the first student visible; 0 rows changed or deleted when trying to update or delete them.
+- Tested as the owner: can read own questions and change only revealed/skipped/bookmarked/self-check/viewed and session position/status; refused when trying to change a model answer, read the meaning fingerprints, add questions or sessions directly, change case text, or call the similarity function.
+- Case text is stripped of phone numbers, ID/record numbers, emails and titled names before it reaches the AI.
+- The temporary test hooks used during testing were removed afterwards (see PROJECT_STATUS).
+
 ## Advisor notes reviewed and accepted
 - `pending_invites` has no policies — on purpose; only the server reads it.
 - `ping()` can be called without signing in — on purpose (daily keep-alive); it only deletes old logs.
