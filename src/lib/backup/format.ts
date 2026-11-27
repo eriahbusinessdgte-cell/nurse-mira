@@ -28,6 +28,7 @@ export const TABLE_ORDER = [
   "revalida_cases",
   "revalida_sessions",
   "revalida_questions",
+  "case_checks",
   "planner_items",
   "cloudflare_usage",
 ] as const;
@@ -55,6 +56,7 @@ export const TABLE_LABEL: Record<TableName, string> = {
   revalida_cases: "Oral revalida cases",
   revalida_sessions: "Oral revalida sessions",
   revalida_questions: "Oral revalida questions",
+  case_checks: "Case study checks",
   planner_items: "Planner items",
   cloudflare_usage: "Page-reading usage",
 };

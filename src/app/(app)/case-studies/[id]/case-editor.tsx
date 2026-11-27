@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Eye,
   FileDown,
+  SpellCheck,
   FileUp,
   Loader2,
   Pencil,
@@ -201,6 +202,9 @@ export function CaseEditor({ initial, subjects, mySubjectIds }: { initial: Initi
         <span className={`text-xs ${save === "error" ? "text-mira-danger" : "text-mira-muted"}`} role="status">
           {save === "saving" ? "Saving…" : save === "error" ? "Not saved — check your internet" : "✓ Saved"}
         </span>
+        <Link href={`/case-studies/check?case=${initial.id}`} className={buttonClass("secondary", "!px-3 !py-1.5")} title="Let Nurse Mira check and lightly improve this case study">
+          <SpellCheck size={16} aria-hidden /> Check it
+        </Link>
         <button type="button" onClick={exportWord} className={buttonClass("secondary", "!px-3 !py-1.5")}>
           <FileDown size={16} aria-hidden /> Word
         </button>

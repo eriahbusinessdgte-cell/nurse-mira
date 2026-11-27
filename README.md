@@ -10,6 +10,7 @@ Product owner and administrator: Erika Angel Perez.
 - Oral Revalida Practice: case-based clinical-instructor questions as flashcards, saved sessions, no repeated questions across sessions
 - Review Center, Quizzes & Exams, Flashcards
 - Nursing Case Study Builder, Nursing Care Plan (NCP) Builder, Family Care Plan Maker and Drug Study Maker
+- Case Study Checker: import your own case study for light, explained revisions (every change shown with its reason, contradictions flagged for you), saved as a new copy
 - Academic Planner
 - Admin area for students, curriculum, the shared library and storage
 

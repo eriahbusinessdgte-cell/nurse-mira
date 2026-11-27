@@ -56,6 +56,8 @@ const TABLES: Record<string, Spec> = {
   family_care_plans: { key: ["id"], order: "id" },
   revalida_cases: { key: ["id"], order: "id" },
   revalida_sessions: { key: ["id"], order: "id" },
+  // Case Study Checker results (D-072). The "busy" lock isn't backed up.
+  case_checks: { key: ["id"], omit: ["working_until"], order: "id" },
   // The meaning fingerprint (embedding) isn't backed up; restored questions still count for the
   // wording and concept repeat checks, just not the meaning-similarity one.
   revalida_questions: {

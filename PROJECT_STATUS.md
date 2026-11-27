@@ -171,6 +171,19 @@ Both test students deleted (after fixing D-053). Database checked: 0 students, o
 ### Family Nursing Care Plan Maker (2026-11-26)
 - D-067: menu "Family Care Plans"; `fncp` function v1; table `family_care_plans` (private); PDF via jsPDF + autotable; print at /print/fncp/[id]. Tests: simple + interconnected generation, one-cell rewrite, privacy (SQL as another student), PDF (Node + real browser download incl. edits), print layout, desktop and phone views. Not yet done by a real student account end-to-end in production.
 
+### Case Study Checker (2026-11-27)
+- D-072: Case Study Maker → "Check a case study" (/case-studies/check, /case-studies/check/[id]); "Check it" link on each case study. `case-check` function (v4); table `case_checks` (own-only, students can only read, delete, and record which new case study they saved). Backups include it (backup v6).
+- Tested live (real AI, test student "Erika Angel"), with Erika's CHN case presentation PDF:
+  - The app's own PDF reader + splitter found all 20 parts (Chapter 1 B/C/D, HPI, Chapters 2–5 with problems A–E, empty Chapter 6 (a picture in the PDF), Chapter 7 drug study, references); detected as a CHN case.
+  - Real AI run on chapters 1–2 + drug study: overview caught the contradictions (widowed vs husband at home, four pregnancies vs G2P2, "no limitation of mobility" vs amputation/walker, Catapres vs drug study); revisions stayed light; "Clopidrogel" → "Clopidogrel"; unclear "Hypertension until present; inconsistent" and "TABSO" marked [CLARIFY] instead of guessed.
+  - First run showed problems that were then fixed and re-tested: the AI added "lower-limb" (not in the paper), said it "changed widowed", and reworded "inconsistent". Now: stricter rules + a code fact guard (numbers, marital/setting words, body side/limb) + changes list only real edits.
+  - Privacy (database rules, as a second student): 0 checks visible, 0 updated, 0 deleted. Owner can't change results or insert checks directly.
+  - Save as new case study (as the student, under database rules, rolled back): 7 sections saved, check marked as saved.
+  - Screens in a real browser, desktop + phone: highlighted changes, keep-original boxes, summary, double-check list; no console errors.
+- Temporary test hook removed and checked (401); SQL helper `_cc_test` is a no-op (safe to remove later); test page removed.
+- Test data left in the "Erika Angel" account: 2 case checks ("CHN case presentation (test – chapters 1–2)", "CHN test run 2"). Safe to delete.
+- Not yet tested: a full 25-page check end to end (8 AI steps) and a real student login in production.
+
 ### Oral Revalida Practice + AI Tutor upgrade (2026-11-27)
 - D-070 Oral Revalida: menu "Oral Revalida" (/revalida, /revalida/[id], /revalida/review). `revalida` function; tables `revalida_cases`, `revalida_sessions`, `revalida_questions` (own-only). D-071 Tutor: do-the-task instructions, longer answers when needed, conversation memory budget, file attach, copy, welcome message (tutor v18+). Backups include the new tables (backup v5).
 - Tested live (real AI, test account "Erika Angel" student): see the completion report in the chat of 2026-11-27 and the list below.

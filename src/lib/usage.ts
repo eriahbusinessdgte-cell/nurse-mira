@@ -49,6 +49,7 @@ export const TOOL_LABEL: Record<string, string> = {
   ncp: "Care plans",
   "drug-study": "Drug studies",
   revalida: "Oral revalida",
+  "case-check": "Case study checker",
   fncp: "Family care plans",
   "read-page": "Handwriting reader",
   embed: "Library search setup",

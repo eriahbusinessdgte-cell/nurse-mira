@@ -24,3 +24,9 @@
 
 ## Performance
 - Added 8 missing indexes on links between tables. "Unused index" notes are expected with so little data yet.
+
+## Case Study Checker (2026-11-27)
+- New table `case_checks`: row-level security on, owner-only. Tested as a second student: 0 checks visible, 0 updated, 0 deleted. Tested as the owner: refused when trying to change results (sections) or insert a check directly; only `saved_case_study_id` can be set.
+- Before the AI reads anything, the student must tick that real names, exact addresses and workplaces are removed (uploads/pastes), or the saved case study must already be confirmed de-identified (same rule as the NCP, drug study and FNCP tools). Phone numbers, ID/record numbers, emails and titled names are also removed automatically; removed details are put back only in the student's own copy.
+- "Save" always creates a new case study; the student's original is never overwritten.
+- The temporary test hook was removed afterwards and checked (401).

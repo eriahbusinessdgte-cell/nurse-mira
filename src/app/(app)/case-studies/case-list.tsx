@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Copy, FileHeart, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Copy, FileHeart, Plus, ShieldCheck, SpellCheck, Trash2 } from "lucide-react";
 import { buttonClass, Card, EmptyState } from "@/components/ui";
 import { createCaseStudy, deleteCaseStudy, duplicateCaseStudy } from "./actions";
 
@@ -28,11 +28,16 @@ export function CaseList({ cases, subjects }: { cases: Row[]; subjects: { id: st
               studies are private.
             </p>
           </div>
-          <form action={createCaseStudy}>
-            <button type="submit" className={buttonClass("accent")} disabled={pending}>
-              <Plus size={18} aria-hidden /> New case study
-            </button>
-          </form>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/case-studies/check" className={buttonClass("secondary")}>
+              <SpellCheck size={18} aria-hidden /> Check a case study
+            </Link>
+            <form action={createCaseStudy}>
+              <button type="submit" className={buttonClass("accent")} disabled={pending}>
+                <Plus size={18} aria-hidden /> New case study
+              </button>
+            </form>
+          </div>
         </div>
         <p className="mt-4 flex items-start gap-2 rounded-lg bg-mira-blue-soft px-3 py-2 text-xs text-mira-blue-dark">
           <ShieldCheck size={15} className="mt-0.5 shrink-0" aria-hidden />

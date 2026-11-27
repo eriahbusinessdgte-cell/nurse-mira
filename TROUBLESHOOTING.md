@@ -10,4 +10,8 @@
 | Oral Revalida made fewer questions than asked | Nurse Mira refuses questions that repeat earlier sessions for the same case, or the day's AI answers ran out | Read the note on the session. Add more case details (labs, medications, care plan) for more to ask about, or come back after midnight and press Try again. |
 | Oral Revalida says "Some progress isn't saved yet" | Internet dropped while practising | Press **Try again** next to the message; the session itself is already saved. |
 | AI Tutor only read part of an attached file | Free AI limits: about the first 6 pages are read | Attach a shorter file or paste the part you need. |
+| Case Study Checker says the paper is too long | Over ~25 pages | Check it in two halves (for example chapters 1–3, then the rest). |
+| Case Study Checker kept a section unchanged with a note | Nurse Mira's suggestion changed a fact (a number, marital status, setting, body side) or too much, so the original was kept on purpose | Nothing to fix. Read the "Please double-check" list and correct facts yourself. |
+| A chapter shows "Empty in your file" | That part was a picture or table the reader couldn't read | Paste that chapter\'s text, or upload the Word version. |
+| Check stopped part-way | Daily AI answers ran out or the free AI was busy | It's saved. Open it from "My checks" and press Continue (after midnight if the limit was reached). |
 | Vercel shows "Deployment blocked" | Repository was made private | Keep the repository public (decision D-011). |

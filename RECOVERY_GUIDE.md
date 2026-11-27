@@ -8,7 +8,7 @@
 
 The Overview page reminds you when the last backup is more than 7 days old.
 
-**What's inside:** students, subjects and topics, the library's text, tutor chats, study sheets, quizzes and results, case studies, care plans, planners and settings.
+**What's inside:** students, subjects and topics, the library's text, tutor chats, study sheets, quizzes and results, case studies and case study checks, care plans, drug studies, oral revalida practice, planners and settings.
 **Not inside:** the original uploaded files (PDFs, photos, Word files) — their text is. Keep your own copies of important originals.
 
 ## Checking a backup (safe — changes nothing)

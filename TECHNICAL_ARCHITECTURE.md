@@ -50,3 +50,9 @@ Next.js server routes (Vercel)         ← checks login and role on every reques
 | Vercel Hobby | Personal, non-commercial use only |
 | Groq | Per-model daily request/token limits shared by the whole app (exact values in the Groq console) |
 | Cloudflare Workers AI | 10,000 neurons per day |
+
+## Case Study Checker (D-072)
+
+- `case-check` Edge Function: `start` (no AI) splits the text into sections at headings (`split.ts`: markdown, CHAPTER/PART/UNIT, lettered/roman headings, known section names; long sections split at paragraphs) and groups them into parts of ~6,000 characters; detects CHN vs hospital format. `step` runs one AI answer: first an overview of the whole paper (digest of every section), then one part at a time. Busy lock (`working_until`), daily limit, saved after every step.
+- Safety in code: a revised section is not used if it is <70% or >160% (+400 chars) of the original, or if `factGuard` finds a dropped number, a changed marital-status/setting word, or an added/changed body side or limb. Look-alike characters are normalised; an echoed title is removed; redacted details are restored in order.
+- Screens: `/case-studies/check` (import + history), `/case-studies/check/[id]` (progress, word-level highlighted changes via `src/lib/case/diff.ts`, keep-original per section, summary, Word download, copy). Saving is a server action that inserts a new `case_studies` row.
